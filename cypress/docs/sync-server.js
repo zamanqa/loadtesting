@@ -25,6 +25,7 @@ const fs      = require('fs');
 const PORT         = 7357;
 const ROOT         = path.join(__dirname, '..', '..');
 const SYNC_SCRIPT  = path.join(__dirname, 'sync-test-cases.js');
+const DASHBOARD    = path.join(__dirname, 'TEST_CASES.html');
 const REPORT_HTML  = path.join(ROOT, 'cypress', 'reports', 'html', 'index.html');
 const HISTORY_DIR  = path.join(__dirname, 'run-history');
 
@@ -36,6 +37,18 @@ function setCors(res) {
   res.setHeader('Access-Control-Allow-Origin',  '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+}
+
+// ── / (serve dashboard HTML) ──────────────────────────────────────────────────
+function handleDashboard(res) {
+  try {
+    const html = fs.readFileSync(DASHBOARD, 'utf8');
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    res.end(html);
+  } catch (e) {
+    res.writeHead(500);
+    res.end('Could not read TEST_CASES.html: ' + e.message);
+  }
 }
 
 // ── /ping ─────────────────────────────────────────────────────────────────────
@@ -336,6 +349,7 @@ const server = http.createServer((req, res) => {
 
   const { pathname } = url.parse(req.url);
 
+  if (pathname === '/'  || pathname === '/index.html')             return handleDashboard(res);
   if (pathname === '/ping')                                        return handlePing(res);
   if (pathname === '/sync')                                        return handleSync(res);
   if (pathname === '/run')                                         return handleRun(req, res);
@@ -348,23 +362,28 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, '127.0.0.1', () => {
-  console.log(`\n✅  Sync server running at http://127.0.0.1:${PORT}`);
+  const url = `http://127.0.0.1:${PORT}`;
+  console.log(`\n✅  Sync server running at ${url}`);
+  console.log(`    Open your browser at ${url}`);
   console.log(`    /ping  /sync  /run?spec=…  /reports  /reports/get  /reports/delete\n`);
+  // Auto-open dashboard in the default browser
+  const openCmd = process.platform === 'win32' ? 'start' : process.platform === 'darwin' ? 'open' : 'xdg-open';
+  require('child_process').exec(`${openCmd} ${url}`);
 });
 
 server.on('error', (err) => {
   if (err.code === 'EADDRINUSE') {
     console.log(`⚠️  Port ${PORT} in use — killing old process…`);
-    require('child_process').exec(
-      `powershell -Command "Get-NetTCPConnection -LocalPort ${PORT} -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }"`,
-      () => {
-        setTimeout(() => {
-          server.listen(PORT, '127.0.0.1', () => {
-            console.log(`✅  Sync server running at http://127.0.0.1:${PORT} (restarted)\n`);
-          });
-        }, 500);
-      }
-    );
+    const killCmd = process.platform === 'win32'
+      ? `powershell -Command "Get-NetTCPConnection -LocalPort ${PORT} -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }"`
+      : `lsof -ti tcp:${PORT} | xargs kill -9`;
+    require('child_process').exec(killCmd, () => {
+      setTimeout(() => {
+        server.listen(PORT, '127.0.0.1', () => {
+          console.log(`✅  Sync server running at http://127.0.0.1:${PORT} (restarted)\n`);
+        });
+      }, 500);
+    });
   } else {
     console.error('Server error:', err.message);
     process.exit(1);

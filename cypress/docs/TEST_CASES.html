@@ -222,7 +222,9 @@
   <div class="footer" id="footerBar">unified-customer-api Test Cases</div>
 
 <script>
-const SERVER = 'http://127.0.0.1:7357';
+// When served from sync-server (http://127.0.0.1:7357), use relative paths (same-origin, no CORS/file:// issues).
+// When opened directly as file://, fall back to the absolute address.
+const SERVER = window.location.protocol === 'file:' ? 'http://127.0.0.1:7357' : '';
 const STATUS_CYCLE = ['notrun','pass','fail','blocked','skip'];
 
 const TABS = [
@@ -953,9 +955,12 @@ function escapeHtml(str) {
 /* ── SERVER PING ───────────────────────────────────────────────────────────── */
 function checkServerStatus() {
   const el = document.getElementById('serverStatus');
-  fetch(SERVER + '/ping', { signal: AbortSignal.timeout(3000) })
-    .then(() => { el.className = 'server-status online'; el.innerHTML = '<span class="status-dot online"></span> Server Online'; })
-    .catch(() => { el.className = 'server-status offline'; el.innerHTML = '<span class="status-dot offline"></span> Server Offline'; });
+  // AbortSignal.timeout() is unsupported in Safari < 16 — use manual AbortController fallback
+  const ctrl = new AbortController();
+  const tid = setTimeout(() => ctrl.abort(), 3000);
+  fetch(SERVER + '/ping', { signal: ctrl.signal })
+    .then(() => { clearTimeout(tid); el.className = 'server-status online'; el.innerHTML = '<span class="status-dot online"></span> Server Online'; })
+    .catch(() => { clearTimeout(tid); el.className = 'server-status offline'; el.innerHTML = '<span class="status-dot offline"></span> Server Offline'; });
 }
 checkServerStatus();
 setInterval(checkServerStatus, 10000);
