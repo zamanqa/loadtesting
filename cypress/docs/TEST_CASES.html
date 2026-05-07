@@ -212,7 +212,10 @@
   <div class="right-panel">
     <div class="log-header">
       <h3 id="logTitle">Live k6 Output</h3>
-      <button class="btn btn-secondary" style="padding:4px 10px;font-size:0.72rem;" onclick="clearLog()">Clear</button>
+      <div style="display:flex;gap:6px;">
+        <button class="btn btn-secondary" id="btnCopyLog" style="padding:4px 10px;font-size:0.72rem;" onclick="copyLog()">⎘ Copy</button>
+        <button class="btn btn-secondary" style="padding:4px 10px;font-size:0.72rem;" onclick="clearLog()">✕ Clear</button>
+      </div>
     </div>
     <div class="progress-bar-container" id="progressBar">
       <div class="progress-bar" id="progressFill"></div>
@@ -723,6 +726,24 @@ function clearLog() {
   const body = document.getElementById('logBody');
   body.innerHTML = '<div class="log-placeholder">Log cleared. Click ▶ Run to start a test.</div>';
   document.getElementById('logTitle').textContent = 'Live k6 Output';
+}
+
+function copyLog() {
+  const rows = document.querySelectorAll('#logBody .log-row');
+  if (!rows.length) { showToast('Nothing to copy', 'error'); return; }
+  // Rows are newest-first in the DOM; reverse so copied text is chronological
+  const lines = Array.from(rows).reverse().map(row => {
+    const time  = row.querySelector('.log-row-time')?.textContent?.trim() || '';
+    const badge = row.querySelector('.log-row-badge')?.textContent?.trim() || '';
+    const msg   = row.querySelector('.log-row-text')?.textContent?.trim() || '';
+    return `[${time}] ${badge.padEnd(6)} ${msg}`;
+  });
+  navigator.clipboard.writeText(lines.join('\n')).then(() => {
+    const btn = document.getElementById('btnCopyLog');
+    btn.textContent = '✓ Copied';
+    showToast('Log copied to clipboard (' + lines.length + ' lines)', 'success');
+    setTimeout(() => { btn.textContent = '⎘ Copy'; }, 2000);
+  }).catch(() => showToast('Copy failed — clipboard not available', 'error'));
 }
 
 // ─── Reports ───────────────────────────────────────────────────────────────────
