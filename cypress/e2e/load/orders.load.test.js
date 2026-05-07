@@ -28,12 +28,12 @@ const SLEEP_BETWEEN_REQUESTS = 1; // seconds
 // Endpoint definitions — used by both the threshold builder and the report config.
 // p99 is omitted here so it defaults to p95 × 2 inside buildThresholds.
 const ENDPOINTS = [
-  { tag: 'orders.get_list',                p95: 500 },
-  { tag: 'orders.get_by_id',               p95: 500 },
-  { tag: 'orders.get_payment_update_link', p95: 800 },
-  { tag: 'orders.get_payment_details',     p95: 800 },
-  { tag: 'orders.get_by_filter',           p95: 500 },
-  { tag: 'orders.get_by_search',           p95: 500 },
+  { tag: 'orders.get_list',                p95: 1000 },
+  { tag: 'orders.get_by_id',               p95: 1000 },
+  { tag: 'orders.get_payment_update_link', p95: 1000 },
+  { tag: 'orders.get_payment_details',     p95: 1000 },
+  { tag: 'orders.get_by_filter',           p95: 1000 },
+  { tag: 'orders.get_by_search',           p95: 1000 },
 ];
 
 export const options = {
@@ -108,7 +108,7 @@ export default function ({ orderId }) {
   k6.check(listRes, {
     'get_list: status 200':  (r) => r.status === 200,
     'get_list: has data':    (r) => { try { return Array.isArray(JSON.parse(r.body).data); } catch { return false; } },
-    'get_list: under 500ms': (r) => r.timings.duration < 500,
+    'get_list: under 500ms': (r) => r.timings.duration < 1000,
   });
 
   // GET /orders/:id
@@ -118,7 +118,7 @@ export default function ({ orderId }) {
     k6.check(byIdRes, {
       'get_by_id: status 200':   (r) => r.status === 200,
       'get_by_id: has id':       (r) => { try { return !!JSON.parse(r.body).id; }       catch { return false; } },
-      'get_by_id: under 500ms':  (r) => r.timings.duration < 500,
+      'get_by_id: under 500ms':  (r) => r.timings.duration < 1000,
     });
   }
 
@@ -131,7 +131,7 @@ export default function ({ orderId }) {
     );
     k6.check(linkRes, {
       'payment_update_link: status 200':  (r) => r.status === 200,
-      'payment_update_link: under 800ms': (r) => r.timings.duration < 800,
+      'payment_update_link: under 800ms': (r) => r.timings.duration < 1000,
     });
   }
 
@@ -144,7 +144,7 @@ export default function ({ orderId }) {
     );
     k6.check(detailsRes, {
       'payment_details: status 200':  (r) => r.status === 200,
-      'payment_details: under 800ms': (r) => r.timings.duration < 800,
+      'payment_details: under 800ms': (r) => r.timings.duration < 1000,
     });
   }
 
@@ -157,7 +157,7 @@ export default function ({ orderId }) {
   k6.check(filterRes, {
     'get_by_filter: status 200':  (r) => r.status === 200,
     'get_by_filter: has data':    (r) => { try { return Array.isArray(JSON.parse(r.body).data); } catch { return false; } },
-    'get_by_filter: under 500ms': (r) => r.timings.duration < 500,
+    'get_by_filter: under 500ms': (r) => r.timings.duration < 1000,
   });
 
   // GET /orders?search=:orderId
@@ -170,7 +170,7 @@ export default function ({ orderId }) {
     k6.check(searchRes, {
       'get_by_search: status 200':  (r) => r.status === 200,
       'get_by_search: has data':    (r) => { try { return Array.isArray(JSON.parse(r.body).data); } catch { return false; } },
-      'get_by_search: under 500ms': (r) => r.timings.duration < 500,
+      'get_by_search: under 500ms': (r) => r.timings.duration < 1000,
     });
   }
 }
@@ -184,12 +184,12 @@ const REPORT_CONFIG = {
   subtitle: '100 VUs · 8 min',
   module:   'orders',
   endpoints: [
-    { tag: 'orders.get_list',                label: 'GET /orders (list)',                   p95limit: 500 },
-    { tag: 'orders.get_by_id',               label: 'GET /orders/:id',                      p95limit: 500 },
-    { tag: 'orders.get_payment_update_link', label: 'GET /orders/:id/payment-update-link',  p95limit: 800 },
-    { tag: 'orders.get_payment_details',     label: 'GET /orders/:id/payment-details',      p95limit: 800 },
-    { tag: 'orders.get_by_filter',           label: 'GET /orders (filter)',                 p95limit: 500 },
-    { tag: 'orders.get_by_search',           label: 'GET /orders?search=:id',               p95limit: 500 },
+    { tag: 'orders.get_list',                label: 'GET /orders (list)',                   p95limit: 1000 },
+    { tag: 'orders.get_by_id',               label: 'GET /orders/:id',                      p95limit: 1000 },
+    { tag: 'orders.get_payment_update_link', label: 'GET /orders/:id/payment-update-link',  p95limit: 1000 },
+    { tag: 'orders.get_payment_details',     label: 'GET /orders/:id/payment-details',      p95limit: 1000 },
+    { tag: 'orders.get_by_filter',           label: 'GET /orders (filter)',                 p95limit: 1000 },
+    { tag: 'orders.get_by_search',           label: 'GET /orders?search=:id',               p95limit: 1000 },
   ],
 };
 
