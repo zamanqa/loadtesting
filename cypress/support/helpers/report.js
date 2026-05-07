@@ -79,8 +79,8 @@ export function buildHtmlReport(data, { title, subtitle, module: moduleName, end
     const modDur  = getMetric(data, `http_req_duration{module:${moduleName}}`);
     const modFail = getMetric(data, `http_req_failed{module:${moduleName}}`);
     const modReqs = getMetric(data, `http_reqs{module:${moduleName}}`);
+    const modP90  = modDur ? modDur['p(90)'] : null;
     const modP95  = modDur ? modDur['p(95)'] : null;
-    const modP99  = modDur ? modDur['p(99)'] : null;
     const modErr  = modFail ? modFail.rate : null;
     const modRps  = modReqs ? modReqs.rate : null;
 
@@ -89,13 +89,13 @@ export function buildHtmlReport(data, { title, subtitle, module: moduleName, end
     <div class="module-summary-title">Module group: <code>${moduleName}</code></div>
     <div class="module-summary-stats">
       <span class="mod-stat">
-        <span class="mod-label">p95</span>
-        <span class="mod-value ${modP95 != null && modP95 < 500 ? 'good' : 'bad'}">${ms(modP95)}</span>
+        <span class="mod-label">p90</span>
+        <span class="mod-value">${ms(modP90)}</span>
       </span>
       <span class="mod-sep">·</span>
       <span class="mod-stat">
-        <span class="mod-label">p99</span>
-        <span class="mod-value ${modP99 != null && modP99 < 1000 ? 'good' : 'bad'}">${ms(modP99)}</span>
+        <span class="mod-label">p95</span>
+        <span class="mod-value ${modP95 != null && modP95 < 500 ? 'good' : 'bad'}">${ms(modP95)}</span>
       </span>
       <span class="mod-sep">·</span>
       <span class="mod-stat">
@@ -118,11 +118,11 @@ export function buildHtmlReport(data, { title, subtitle, module: moduleName, end
     const reqs     = getMetric(data, `http_reqs{endpoint:${tag}}`);
     const chks     = getMetric(data, `checks{endpoint:${tag}}`);
     const ok       = passed(data, `http_req_duration{endpoint:${tag}}`);
-    const p95Val   = dur ? dur['p(95)'] : null;
-    const p99Val   = dur ? dur['p(99)'] : null;
-    const checkRate = chks ? chks.rate : null;
+    const p90Val      = dur ? dur['p(90)'] : null;
+    const p95Val      = dur ? dur['p(95)'] : null;
+    const checkRate   = chks ? chks.rate : null;
     const endpointRps = reqs ? reqs.rate : null;
-    const skipped  = !dur;
+    const skipped     = !dur;
 
     const badge = skipped
       ? `<span class="badge skip">SKIPPED</span>`
@@ -130,9 +130,9 @@ export function buildHtmlReport(data, { title, subtitle, module: moduleName, end
         ? `<span class="badge fail">❌ FAIL</span>`
         : `<span class="badge pass">✅ PASS</span>`;
 
-    const p95Class = p95Val != null ? (p95Val < p95limit ? 'good' : 'bad') : '';
-    const p99limit = Math.round(p95limit * 2);
-    const p99Class = p99Val != null ? (p99Val < p99limit ? 'good' : 'bad') : '';
+    const p90limit  = Math.round(p95limit * 0.80);
+    const p90Class  = p90Val != null ? (p90Val < p90limit ? 'good' : 'bad') : '';
+    const p95Class  = p95Val != null ? (p95Val < p95limit ? 'good' : 'bad') : '';
     const checkClass = checkRate != null ? (checkRate >= 0.95 ? 'good' : 'bad') : '';
 
     return `
@@ -142,7 +142,7 @@ export function buildHtmlReport(data, { title, subtitle, module: moduleName, end
         ${badge}
       </div>
       <div class="card-meta">
-        Tag: <code>${tag}</code> &nbsp;·&nbsp; p95 limit: <code>${p95limit} ms</code> &nbsp;·&nbsp; p99 limit: <code>${p99limit} ms</code>
+        Tag: <code>${tag}</code> &nbsp;·&nbsp; p90 limit: <code>${p90limit} ms</code> &nbsp;·&nbsp; p95 limit: <code>${p95limit} ms</code>
       </div>
       ${skipped
         ? `<p class="skip-note">Not called — required data was unavailable.</p>`
@@ -155,8 +155,8 @@ export function buildHtmlReport(data, { title, subtitle, module: moduleName, end
           <tr><td>avg</td><td>${ms(dur ? dur.avg : null)}</td></tr>
           <tr><td>min</td><td>${ms(dur ? dur.min : null)}</td></tr>
           <tr><td>p50</td><td>${ms(dur ? dur.med : null)}</td></tr>
+          <tr><td class="${p90Class}">p90</td><td class="${p90Class}">${ms(p90Val)}</td></tr>
           <tr><td class="${p95Class}">p95</td><td class="${p95Class}">${ms(p95Val)}</td></tr>
-          <tr><td class="${p99Class}">p99</td><td class="${p99Class}">${ms(p99Val)}</td></tr>
           <tr><td>max</td><td>${ms(dur ? dur.max : null)}</td></tr>
         </table>`}
     </div>`;
