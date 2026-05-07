@@ -635,9 +635,9 @@ function appendLog(text, cls) {
   row.appendChild(badge);
   row.appendChild(msg);
 
-  // Prepend → newest entry at top; scroll to top to show it
-  body.insertBefore(row, body.firstChild);
-  body.scrollTop = 0;
+  // Append → newest entry at bottom; auto-scroll down to show it
+  body.appendChild(row);
+  body.scrollTop = body.scrollHeight;
 }
 
 function clearLog() {
