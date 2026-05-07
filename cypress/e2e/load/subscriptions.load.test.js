@@ -82,6 +82,8 @@ export function setup() {
 // Each VU runs this on every iteration.
 // getToken() handles token caching and auto-refresh per VU.
 export default function ({ subscriptionId }) {
+  console.log(`[VU] Using subscriptionId: ${subscriptionId}`);
+
   const { token, companyId } = getToken();
   const base = `${k6.BASE_URL}/${k6.API_VERSION}/${companyId}/circulydb`;
 
