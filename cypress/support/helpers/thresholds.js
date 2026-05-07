@@ -57,14 +57,14 @@ export function buildThresholds(module, endpoints) {
   for (const { tag, p95, p90 } of endpoints) {
     const p90limit = p90 ?? Math.round(p95 * 0.80);
 
-    thresholds[`http_req_duration{endpoint:${tag}}`] = [
+    thresholds[`http_req_duration{ep:${tag}}`] = [
       `p(90)<${p90limit}`,
       `p(95)<${p95}`,
     ];
-    thresholds[`http_req_failed{endpoint:${tag}}`] = ['rate<0.01'];
+    thresholds[`http_req_failed{ep:${tag}}`] = ['rate<0.01'];
 
     // check() assertions: at least 95% of them must pass for this endpoint
-    thresholds[`checks{endpoint:${tag}}`] = ['rate>0.95'];
+    thresholds[`checks{ep:${tag}}`] = ['rate>0.95'];
   }
 
   return thresholds;

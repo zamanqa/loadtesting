@@ -8,7 +8,7 @@
  * Threshold levels:
  *   1. Global  — applies to every request in the test
  *   2. Module  — http_req_duration{module:auth} aggregates the login endpoint
- *   3. Endpoint — http_req_duration{endpoint:auth.login}
+ *   3. Endpoint — http_req_duration{ep:auth.login}
  *
  * Run: npm run login:load
  */
@@ -70,7 +70,7 @@ export default function () {
     JSON.stringify({ consumer_key: k6.CONSUMER_KEY, consumer_secret: k6.CONSUMER_SECRET }),
     {
       headers: { 'Content-Type': 'application/json' },
-      tags: { scenario: 'load', module: 'auth', endpoint: 'auth.login' },
+      tags: { scenario: 'load', module: 'auth', ep: 'auth.login' },
       timeout: '10s',
     }
   );

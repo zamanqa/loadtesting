@@ -12,7 +12,7 @@
  * Threshold levels:
  *   1. Global  — applies to every request in the test
  *   2. Module  — http_req_duration{module:orders} aggregates all 6 endpoints
- *   3. Endpoint — http_req_duration{endpoint:orders.get_list} etc. per request type
+ *   3. Endpoint — http_req_duration{ep:orders.get_list} etc. per request type
  *
  * Run: npm run orders:load
  */
@@ -93,14 +93,14 @@ export default function ({ orderId }) {
   const base = `${k6.BASE_URL}/${k6.API_VERSION}/${companyId}/circulydb`;
 
   // Both tags are required: 'module' enables the group-level threshold,
-  // 'endpoint' enables the per-endpoint threshold.
+  // 'ep' enables the per-endpoint threshold.
   const params = (endpointTag) => ({
     headers: {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
       Accept: 'application/json',
     },
-    tags: { scenario: 'load', module: 'orders', endpoint: endpointTag },
+    tags: { scenario: 'load', module: 'orders', ep: endpointTag },
     timeout: '10s',
   });
 
@@ -114,7 +114,7 @@ export default function ({ orderId }) {
     'get_list: status 200':                              (r) => r.status === 200,
     'get_list: has data':                               (r) => { try { return Array.isArray(JSON.parse(r.body).data); } catch { return false; } },
     [`get_list: under ${limit['orders.get_list']}ms`]:  (r) => r.timings.duration < limit['orders.get_list'],
-  }, { module: 'orders', endpoint: 'orders.get_list' });
+  }, { module: 'orders', ep: 'orders.get_list' });
 
   // GET /orders/:id
   k6.sleep(SLEEP_BETWEEN_REQUESTS);
@@ -124,7 +124,7 @@ export default function ({ orderId }) {
       'get_by_id: status 200':                               (r) => r.status === 200,
       'get_by_id: has id':                                   (r) => { try { return !!JSON.parse(r.body).id; } catch { return false; } },
       [`get_by_id: under ${limit['orders.get_by_id']}ms`]:   (r) => r.timings.duration < limit['orders.get_by_id'],
-    }, { module: 'orders', endpoint: 'orders.get_by_id' });
+    }, { module: 'orders', ep: 'orders.get_by_id' });
   }
 
   // GET /orders/:id/payment-update-link
@@ -137,7 +137,7 @@ export default function ({ orderId }) {
     k6.check(linkRes, {
       'payment_update_link: status 200':                                           (r) => r.status === 200,
       [`payment_update_link: under ${limit['orders.get_payment_update_link']}ms`]: (r) => r.timings.duration < limit['orders.get_payment_update_link'],
-    }, { module: 'orders', endpoint: 'orders.get_payment_update_link' });
+    }, { module: 'orders', ep: 'orders.get_payment_update_link' });
   }
 
   // GET /orders/:id/payment-methods
@@ -150,7 +150,7 @@ export default function ({ orderId }) {
     k6.check(detailsRes, {
       'payment_methods: status 200':                                       (r) => r.status === 200,
       [`payment_methods: under ${limit['orders.get_payment_methods']}ms`]: (r) => r.timings.duration < limit['orders.get_payment_methods'],
-    }, { module: 'orders', endpoint: 'orders.get_payment_methods' });
+    }, { module: 'orders', ep: 'orders.get_payment_methods' });
   }
 
   // GET /orders — with explicit filter params
@@ -163,7 +163,7 @@ export default function ({ orderId }) {
     'get_by_filter: status 200':                                  (r) => r.status === 200,
     'get_by_filter: has data':                                    (r) => { try { return Array.isArray(JSON.parse(r.body).data); } catch { return false; } },
     [`get_by_filter: under ${limit['orders.get_by_filter']}ms`]:  (r) => r.timings.duration < limit['orders.get_by_filter'],
-  }, { module: 'orders', endpoint: 'orders.get_by_filter' });
+  }, { module: 'orders', ep: 'orders.get_by_filter' });
 
   // GET /orders?search=:orderId
   k6.sleep(SLEEP_BETWEEN_REQUESTS);
@@ -176,7 +176,7 @@ export default function ({ orderId }) {
       'get_by_search: status 200':                                  (r) => r.status === 200,
       'get_by_search: has data':                                    (r) => { try { return Array.isArray(JSON.parse(r.body).data); } catch { return false; } },
       [`get_by_search: under ${limit['orders.get_by_search']}ms`]:  (r) => r.timings.duration < limit['orders.get_by_search'],
-    }, { module: 'orders', endpoint: 'orders.get_by_search' });
+    }, { module: 'orders', ep: 'orders.get_by_search' });
   }
 }
 

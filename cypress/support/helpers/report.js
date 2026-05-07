@@ -66,7 +66,7 @@ export function buildHtmlReport(data, { title, subtitle, module: moduleName, end
   let slowestTag = null;
   let slowestP95 = 0;
   endpoints.forEach(({ tag }) => {
-    const dur = getMetric(data, `http_req_duration{endpoint:${tag}}`);
+    const dur = getMetric(data, `http_req_duration{ep:${tag}}`);
     if (dur && dur['p(95)'] > slowestP95) {
       slowestP95 = dur['p(95)'];
       slowestTag = tag;
@@ -113,11 +113,11 @@ export function buildHtmlReport(data, { title, subtitle, module: moduleName, end
 
   // Per-endpoint cards
   const cards = endpoints.map(({ tag, label, p95limit }) => {
-    const dur      = getMetric(data, `http_req_duration{endpoint:${tag}}`);
-    const fail     = getMetric(data, `http_req_failed{endpoint:${tag}}`);
+    const dur      = getMetric(data, `http_req_duration{ep:${tag}}`);
+    const fail     = getMetric(data, `http_req_failed{ep:${tag}}`);
     const reqs     = getMetric(data, `http_reqs{endpoint:${tag}}`);
-    const chks     = getMetric(data, `checks{endpoint:${tag}}`);
-    const ok       = passed(data, `http_req_duration{endpoint:${tag}}`);
+    const chks     = getMetric(data, `checks{ep:${tag}}`);
+    const ok       = passed(data, `http_req_duration{ep:${tag}}`);
     const p90Val      = dur ? dur['p(90)'] : null;
     const p95Val      = dur ? dur['p(95)'] : null;
     const checkRate   = chks ? chks.rate : null;
