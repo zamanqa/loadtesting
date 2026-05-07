@@ -135,3 +135,15 @@ export function setSubscriptionStatusInDB(subscriptionId, status) {
     cy.log(`Set subscription ${subscriptionId} status to '${status}' in DB`);
   });
 }
+
+export function getSubscriptionsByFilter() {
+  return circulydbRequest('GET', '/subscriptions', {
+    qs: { page: 1, per_page: 100, sort: 'created_at', desc: true }
+  });
+}
+
+export function getSubscriptionsBySearch(subscriptionId) {
+  return circulydbRequest('GET', '/subscriptions', {
+    qs: { search: subscriptionId, sort: 'created_at', desc: true }
+  });
+}

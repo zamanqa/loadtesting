@@ -13,6 +13,7 @@ describe('Customer API - Products & Variants', () => {
       cy.log('SKU:', product.sku);
 
       Cypress.env('dbProductId', product.id);
+      Cypress.env('dbProductTitle', product.title);
     });
 
     productVariants.getVariantFromDB().then((result) => {
@@ -81,6 +82,23 @@ describe('Customer API - Products & Variants', () => {
     });
 
     productVariants.verifyVariantInDB(variantId);
+  });
+
+  it('Test 5: Get products by filter (paginated)', () => {
+    productVariants.getProductsByFilter().then((response) => {
+      expect(response.status).to.eq(200);
+      expect(response.body).to.have.property('data');
+      expect(response.body.data.length).to.be.greaterThan(0);
+      cy.log('Filtered products count:', response.body.data.length);
+    });
+  });
+
+  it('Test 6: Get products by search using DB product title', () => {
+    productVariants.getProductsBySearch(Cypress.env('dbProductTitle')).then((response) => {
+      expect(response.status).to.eq(200);
+      expect(response.body).to.have.property('data');
+      cy.log('Search results count:', response.body.data.length);
+    });
   });
 
 });

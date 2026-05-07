@@ -36,3 +36,15 @@ export function verifyVariantInDB(variantId) {
   });
 }
 
+export function getProductsByFilter() {
+  return circulydbRequest('GET', '/products', {
+    qs: { page: 1, per_page: 100, sort: 'created_at', desc: true }
+  });
+}
+
+export function getProductsBySearch(title) {
+  return circulydbRequest('GET', '/products', {
+    qs: { search: title, sort: 'created_at', desc: true }
+  });
+}
+

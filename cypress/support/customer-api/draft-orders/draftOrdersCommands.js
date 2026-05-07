@@ -58,3 +58,17 @@ export function verifyDraftOrderDeletedInDB(draftOrderId) {
     cy.log(`DB deleted_at: ${result[0].deleted_at}`);
   });
 }
+
+export function getDraftOrdersByFilter() {
+  return circulydbRequest('GET', '/draft-orders', {
+    qs: { page: 1, per_page: 100, sort: 'created_at', desc: true },
+    timeout: 20000
+  });
+}
+
+export function getDraftOrdersBySearch(searchTerm) {
+  return circulydbRequest('GET', '/draft-orders', {
+    qs: { search: searchTerm, sort: 'created_at', desc: true },
+    timeout: 20000
+  });
+}

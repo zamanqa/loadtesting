@@ -70,5 +70,22 @@ describe('Customer Invoices API', () => {
     });
   });
 
+  it('Test 5: Get invoices by filter (paginated)', () => {
+    invoices.getInvoicesByFilter().then((response) => {
+      expect(response.status).to.eq(200);
+      expect(response.body).to.have.property('data');
+      expect(response.body.data.length).to.be.greaterThan(0);
+      cy.log('Filtered invoices count:', response.body.data.length);
+    });
+  });
+
+  it('Test 6: Get invoices by search using DB invoice number', () => {
+    invoices.getInvoicesBySearch(Cypress.env('dbInvoiceNumber')).then((response) => {
+      expect(response.status).to.eq(200);
+      expect(response.body).to.have.property('data');
+      cy.log('Search results count:', response.body.data.length);
+    });
+  });
+
 });
 

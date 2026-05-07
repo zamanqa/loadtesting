@@ -47,4 +47,21 @@ describe('Customer Transactions API', () => {
     transactions.verifyTransactionInDB(transactionId);
   });
 
+  it('Test 3: Get transactions by filter (paginated)', () => {
+    transactions.getTransactionsByFilter().then((response) => {
+      expect(response.status).to.eq(200);
+      expect(response.body).to.have.property('data');
+      expect(response.body.data.length).to.be.greaterThan(0);
+      cy.log('Filtered transactions count:', response.body.data.length);
+    });
+  });
+
+  it('Test 4: Get transactions by search using DB transaction ID', () => {
+    transactions.getTransactionsBySearch(Cypress.env('dbTransactionId')).then((response) => {
+      expect(response.status).to.eq(200);
+      expect(response.body).to.have.property('data');
+      cy.log('Search results count:', response.body.data.length);
+    });
+  });
+
 });

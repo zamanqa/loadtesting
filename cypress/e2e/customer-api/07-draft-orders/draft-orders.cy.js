@@ -94,4 +94,27 @@ describe('Draft Orders API', () => {
     });
   });
 
+  it('Test 5: Get draft orders by filter (paginated)', () => {
+    draftOrders.getDraftOrdersByFilter().then((response) => {
+      expect(response.status).to.eq(200);
+      expect(response.body).to.have.property('data');
+      expect(response.body.data.length).to.be.greaterThan(0);
+      cy.log('Filtered draft orders count:', response.body.data.length);
+    });
+  });
+
+  it('Test 6: Get draft orders by search using DB draft order name', () => {
+    draftOrders.getLatestDraftOrderFromDB().then((result) => {
+      expect(result.length).to.be.greaterThan(0);
+      const name = result[0].name;
+      cy.log('Searching draft orders with name:', name);
+
+      draftOrders.getDraftOrdersBySearch(name).then((response) => {
+        expect(response.status).to.eq(200);
+        expect(response.body).to.have.property('data');
+        cy.log('Search results count:', response.body.data.length);
+      });
+    });
+  });
+
 });

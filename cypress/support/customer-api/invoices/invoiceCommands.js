@@ -68,3 +68,15 @@ export function verifyRefundInDB(transactionId) {
     cy.log(`Refund verified in DB: refunded_transaction_id = ${transactionId}`);
   });
 }
+
+export function getInvoicesByFilter() {
+  return circulydbRequest('GET', '/paginated-invoices', {
+    qs: { page: 1, per_page: 10, sort: 'created_at', desc: true }
+  });
+}
+
+export function getInvoicesBySearch(invoiceNumber) {
+  return circulydbRequest('GET', '/paginated-invoices', {
+    qs: { search: invoiceNumber }
+  });
+}

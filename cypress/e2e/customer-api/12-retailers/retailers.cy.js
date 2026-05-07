@@ -14,6 +14,7 @@ describe('Customer API - Retailers', () => {
 
       Cypress.env('dbRetailerId', retailer.id);
       Cypress.env('dbLocationId', retailer.location_id);
+      Cypress.env('dbRetailerName', retailer.name);
     });
   });
 
@@ -107,6 +108,23 @@ describe('Customer API - Retailers', () => {
     });
 
     retailers.verifyRetailerInDB(retailerId);
+  });
+
+  it('Test 5: Get retailers by filter (paginated)', () => {
+    retailers.getRetailersByFilter().then((response) => {
+      expect(response.status).to.eq(200);
+      expect(response.body).to.have.property('data');
+      expect(response.body.data.length).to.be.greaterThan(0);
+      cy.log('Filtered retailers count:', response.body.data.length);
+    });
+  });
+
+  it('Test 6: Get retailers by search using DB retailer name', () => {
+    retailers.getRetailersBySearch(Cypress.env('dbRetailerName')).then((response) => {
+      expect(response.status).to.eq(200);
+      expect(response.body).to.have.property('data');
+      cy.log('Search results count:', response.body.data.length);
+    });
   });
 
 });

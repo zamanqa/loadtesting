@@ -139,3 +139,15 @@ export function verifyCustomerTransferredInDB(sourceUid, targetUid) {
     expect(targetCount).to.be.greaterThan(0);
   });
 }
+
+export function getCustomersByFilter() {
+  return circulydbRequest('GET', '/customers', {
+    qs: { page: 1, per_page: 100, sort: 'created_at', desc: true }
+  });
+}
+
+export function getCustomersBySearch(uid) {
+  return circulydbRequest('GET', '/customers', {
+    qs: { search: uid, sort: 'created_at', desc: true }
+  });
+}

@@ -43,3 +43,15 @@ export function verifyRetailerInDB(retailerId) {
     cy.log(`DB retailer: location_id=${result[0].location_id}, name=${result[0].name}, enabled=${result[0].enabled}`);
   });
 }
+
+export function getRetailersByFilter() {
+  return circulydbRequest('GET', '/retailers', {
+    qs: { page: 1, per_page: 100, sort: 'created_at', desc: true }
+  });
+}
+
+export function getRetailersBySearch(name) {
+  return circulydbRequest('GET', '/retailers', {
+    qs: { search: name, sort: 'created_at', desc: true }
+  });
+}

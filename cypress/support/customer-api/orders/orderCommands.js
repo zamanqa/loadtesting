@@ -135,3 +135,15 @@ export function checkCustomerOrderItemExistsInDatabase(orderId) {
     cy.log(`Order items for ${orderId} exist in the database (${result.length} items)`);
   });
 }
+
+export function getOrdersByFilter() {
+  return circulydbRequest('GET', '/orders', {
+    qs: { page: 1, per_page: 100, sort: 'created_at', desc: true }
+  });
+}
+
+export function getOrdersBySearch(orderId) {
+  return circulydbRequest('GET', '/orders', {
+    qs: { search: orderId, sort: 'created_at', desc: true }
+  });
+}

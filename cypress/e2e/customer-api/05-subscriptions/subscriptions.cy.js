@@ -171,4 +171,21 @@ describe('Customer Subscriptions API', () => {
     });
   });
 
+  it('Test 10: Get subscriptions by filter (paginated)', () => {
+    subscriptions.getSubscriptionsByFilter().then((response) => {
+      expect(response.status).to.eq(200);
+      expect(response.body).to.have.property('data');
+      expect(response.body.data.length).to.be.greaterThan(0);
+      cy.log('Filtered subscriptions count:', response.body.data.length);
+    });
+  });
+
+  it('Test 11: Get subscriptions by search using DB subscription ID', () => {
+    subscriptions.getSubscriptionsBySearch(Cypress.env('dbSubscriptionId')).then((response) => {
+      expect(response.status).to.eq(200);
+      expect(response.body).to.have.property('data');
+      cy.log('Search results count:', response.body.data.length);
+    });
+  });
+
 });

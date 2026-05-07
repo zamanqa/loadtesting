@@ -25,3 +25,15 @@ export function verifyTransactionInDB(transactionId) {
     cy.log(`DB type: ${result[0].type}, status: ${result[0].status}, amount: ${result[0].amount_paid}`);
   });
 }
+
+export function getTransactionsByFilter() {
+  return circulydbRequest('GET', '/transactions', {
+    qs: { page: 1, per_page: 100, sort: 'created_at', desc: true }
+  });
+}
+
+export function getTransactionsBySearch(transactionId) {
+  return circulydbRequest('GET', '/transactions', {
+    qs: { search: transactionId, sort: 'created_at', desc: true }
+  });
+}

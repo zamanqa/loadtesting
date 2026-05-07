@@ -24,3 +24,15 @@ export function verifyRecurringPaymentInDB(recurringPaymentId) {
     cy.log(`DB status: ${result[0].status}, amount: ${result[0].amount}, enabled: ${result[0].enabled}`);
   });
 }
+
+export function getRecurringPaymentsByFilter() {
+  return circulydbRequest('GET', '/recurring-payments', {
+    qs: { page: 1, per_page: 100, sort: 'created_at', desc: true }
+  });
+}
+
+export function getRecurringPaymentsBySearch(subscriptionId) {
+  return circulydbRequest('GET', '/recurring-payments', {
+    qs: { search: subscriptionId, sort: 'created_at', desc: true }
+  });
+}

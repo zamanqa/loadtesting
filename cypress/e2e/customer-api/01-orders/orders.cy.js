@@ -176,4 +176,21 @@ describe('Customer Orders API - Separated Tests Using Commands', () => {
     });
   });
 
+  it('Test 13: Get orders by filter (paginated)', () => {
+    orders.getOrdersByFilter().then((response) => {
+      expect(response.status).to.eq(200);
+      expect(response.body).to.have.property('data');
+      expect(response.body.data.length).to.be.greaterThan(0);
+      cy.log('Filtered orders count:', response.body.data.length);
+    });
+  });
+
+  it('Test 14: Get orders by search using DB order ID', () => {
+    orders.getOrdersBySearch(Cypress.env('dbOrderId')).then((response) => {
+      expect(response.status).to.eq(200);
+      expect(response.body).to.have.property('data');
+      cy.log('Search results count:', response.body.data.length);
+    });
+  });
+
 });

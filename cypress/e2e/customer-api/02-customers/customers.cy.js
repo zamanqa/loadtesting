@@ -125,4 +125,21 @@ describe('Customer API', () => {
     });
   });
 
+  it('Test 11: Get customers by filter (paginated)', () => {
+    customers.getCustomersByFilter().then((response) => {
+      expect(response.status).to.eq(200);
+      expect(response.body).to.have.property('data');
+      expect(response.body.data.length).to.be.greaterThan(0);
+      cy.log('Filtered customers count:', response.body.data.length);
+    });
+  });
+
+  it('Test 12: Get customers by search using DB customer ID', () => {
+    customers.getCustomersBySearch(Cypress.env('dbCustomerId')).then((response) => {
+      expect(response.status).to.eq(200);
+      expect(response.body).to.have.property('data');
+      cy.log('Search results count:', response.body.data.length);
+    });
+  });
+
 });

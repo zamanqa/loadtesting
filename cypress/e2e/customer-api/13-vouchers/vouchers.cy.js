@@ -121,4 +121,21 @@ describe('Customer API - Vouchers', () => {
     });
   });
 
+  it('Test 6: Get vouchers by filter (paginated)', () => {
+    vouchers.getVouchersByFilter().then((response) => {
+      expect(response.status).to.eq(200);
+      expect(response.body).to.have.property('data');
+      expect(response.body.data.length).to.be.greaterThan(0);
+      cy.log('Filtered vouchers count:', response.body.data.length);
+    });
+  });
+
+  it('Test 7: Get vouchers by search using voucher code from API', () => {
+    vouchers.getVouchersBySearch(Cypress.env('dbVoucherCode')).then((response) => {
+      expect(response.status).to.eq(200);
+      expect(response.body).to.have.property('data');
+      cy.log('Search results count:', response.body.data.length);
+    });
+  });
+
 });
