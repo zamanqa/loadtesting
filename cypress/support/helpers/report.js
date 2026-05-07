@@ -118,6 +118,7 @@ export function buildHtmlReport(data, { title, subtitle, module: moduleName, end
     const reqs     = getMetric(data, `http_reqs{endpoint:${tag}}`);
     const chks     = getMetric(data, `checks{endpoint:${tag}}`);
     const ok       = passed(data, `http_req_duration{endpoint:${tag}}`);
+    const p85Val      = dur ? dur['p(85)'] : null;
     const p90Val      = dur ? dur['p(90)'] : null;
     const p95Val      = dur ? dur['p(95)'] : null;
     const checkRate   = chks ? chks.rate : null;
@@ -130,9 +131,11 @@ export function buildHtmlReport(data, { title, subtitle, module: moduleName, end
         ? `<span class="badge fail">❌ FAIL</span>`
         : `<span class="badge pass">✅ PASS</span>`;
 
-    const p90limit  = Math.round(p95limit * 0.80);
-    const p90Class  = p90Val != null ? (p90Val < p90limit ? 'good' : 'bad') : '';
-    const p95Class  = p95Val != null ? (p95Val < p95limit ? 'good' : 'bad') : '';
+    const p85limit   = Math.round(p95limit * 0.70);
+    const p90limit   = Math.round(p95limit * 0.80);
+    const p85Class   = p85Val != null ? (p85Val < p85limit ? 'good' : 'bad') : '';
+    const p90Class   = p90Val != null ? (p90Val < p90limit ? 'good' : 'bad') : '';
+    const p95Class   = p95Val != null ? (p95Val < p95limit ? 'good' : 'bad') : '';
     const checkClass = checkRate != null ? (checkRate >= 0.95 ? 'good' : 'bad') : '';
 
     return `
@@ -142,7 +145,7 @@ export function buildHtmlReport(data, { title, subtitle, module: moduleName, end
         ${badge}
       </div>
       <div class="card-meta">
-        Tag: <code>${tag}</code> &nbsp;·&nbsp; p90 limit: <code>${p90limit} ms</code> &nbsp;·&nbsp; p95 limit: <code>${p95limit} ms</code>
+        Tag: <code>${tag}</code> &nbsp;·&nbsp; p85 limit: <code>${p85limit} ms</code> &nbsp;·&nbsp; p90 limit: <code>${p90limit} ms</code> &nbsp;·&nbsp; p95 limit: <code>${p95limit} ms</code>
       </div>
       ${skipped
         ? `<p class="skip-note">Not called — required data was unavailable.</p>`
@@ -154,7 +157,7 @@ export function buildHtmlReport(data, { title, subtitle, module: moduleName, end
           <tr><td>Check pass rate</td><td class="${checkClass}">${pct(checkRate)}</td></tr>
           <tr><td>avg</td><td>${ms(dur ? dur.avg : null)}</td></tr>
           <tr><td>min</td><td>${ms(dur ? dur.min : null)}</td></tr>
-          <tr><td>p50</td><td>${ms(dur ? dur.med : null)}</td></tr>
+          <tr><td class="${p85Class}">p85</td><td class="${p85Class}">${ms(p85Val)}</td></tr>
           <tr><td class="${p90Class}">p90</td><td class="${p90Class}">${ms(p90Val)}</td></tr>
           <tr><td class="${p95Class}">p95</td><td class="${p95Class}">${ms(p95Val)}</td></tr>
           <tr><td>max</td><td>${ms(dur ? dur.max : null)}</td></tr>

@@ -15,13 +15,14 @@
  *     scenarios: { ... },
  *   };
  *
- * Percentile defaults (derived from p95 when not specified):
- *   p90 = p95 × 0.80  (tighter gate — 80% of the p95 budget)
+ * Percentile defaults (all derived from p95 when not specified):
+ *   p85 = p95 × 0.70
+ *   p90 = p95 × 0.80
  *
  * This generates three levels of thresholds automatically:
  *   1. Global   — applies to every request across the whole test
  *   2. Module   — aggregates all endpoints in the file under one group tag
- *   3. Endpoint — individual threshold per request type (p90 + p95)
+ *   3. Endpoint — individual threshold per request type (p85, p90, p95)
  */
 
 /**
@@ -31,6 +32,7 @@
  * @param {Array}  endpoints - Array of endpoint descriptor objects:
  *   @param {string} endpoints[].tag   - Full endpoint tag, e.g. 'orders.get_list'
  *   @param {number} endpoints[].p95   - p95 response time limit in ms
+ *   @param {number} [endpoints[].p85] - p85 limit in ms. Defaults to p95 × 0.70.
  *   @param {number} [endpoints[].p90] - p90 limit in ms. Defaults to p95 × 0.80.
  *
  * @returns {object} A k6-compatible thresholds object
@@ -54,10 +56,12 @@ export function buildThresholds(module, endpoints) {
   };
 
   // ── Level 3: Per-endpoint ─────────────────────────────────────────────────
-  for (const { tag, p95, p90 } of endpoints) {
+  for (const { tag, p95, p85, p90 } of endpoints) {
+    const p85limit = p85 ?? Math.round(p95 * 0.70);
     const p90limit = p90 ?? Math.round(p95 * 0.80);
 
     thresholds[`http_req_duration{endpoint:${tag}}`] = [
+      `p(85)<${p85limit}`,
       `p(90)<${p90limit}`,
       `p(95)<${p95}`,
     ];
