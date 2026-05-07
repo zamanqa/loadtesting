@@ -68,20 +68,10 @@ export function setup() {
   }
 
   const body = JSON.parse(res.body);
-  const first = body.data && body.data.length > 0 ? body.data[0] : null;
-
-  if (!first) {
-    throw new Error(`No data in subscriptions response — full body: ${res.body}`);
-  }
-
-  const subscriptionId = first.subscription_id;
+  const subscriptionId = body.data && body.data.length > 0 ? body.data[0].id : null;
 
   if (!subscriptionId) {
-    throw new Error(
-      `subscription_id is missing from API response.\n` +
-      `Available fields: ${Object.keys(first).join(', ')}\n` +
-      `First record: ${JSON.stringify(first)}`
-    );
+    throw new Error('No subscriptions found in the database — cannot run test without a valid subscriptionId');
   }
 
   console.log(`[setup] Using subscriptionId: ${subscriptionId}`);
@@ -128,7 +118,7 @@ export default function ({ subscriptionId }) {
     );
     k6.check(byIdRes, {
       'get_by_id: status 200':                                        (r) => r.status === 200,
-      'get_by_id: has subscription_id':                               (r) => { try { return !!JSON.parse(r.body).subscription_id; } catch { return false; } },
+      'get_by_id: has id':                               (r) => { try { return !!JSON.parse(r.body).id; } catch { return false; } },
       [`get_by_id: under ${limit['subscriptions.get_by_id']}ms`]:     (r) => r.timings.duration < limit['subscriptions.get_by_id'],
     }, { module: 'subscriptions', ep: 'subscriptions.get_by_id' });
   }
