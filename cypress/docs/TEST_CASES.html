@@ -63,60 +63,24 @@
     .right-panel { flex: 1; min-width: 340px; background: #222540; border-left: 1px solid #353860; display: flex; flex-direction: column; }
     .log-header { padding: 14px 18px; background: #1e2040; border-bottom: 1px solid #353860; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
     .log-header h3 { font-size: 0.9rem; color: #d4d8f0; font-weight: 600; }
-    /* ── Log grid (Heroku-style) ─────────────────────────────────────────── */
+    /* ── Log — raw k6 terminal output ───────────────────────────────────── */
     .log-body {
-      flex: 1; overflow-y: auto; overflow-x: hidden;
-      padding: 0; margin: 0;
+      flex: 1; overflow-y: auto; overflow-x: auto;
+      padding: 10px 14px; margin: 0;
       font-family: 'Consolas', 'Fira Code', 'Courier New', monospace;
-      font-size: 0.72rem;
-      background: #0d0e1a;
+      font-size: 0.76rem; line-height: 1.6;
+      background: #0d0f1c;
+      white-space: pre;
     }
-    .log-placeholder {
-      padding: 18px 20px; color: #8890b5; line-height: 1.9;
-      white-space: pre; font-size: 0.75rem;
-    }
-    /* Each log line = 3-column grid */
-    .log-row {
-      display: grid;
-      grid-template-columns: 72px 58px 1fr;
-      min-height: 22px;
-      border-bottom: 1px solid rgba(53,56,96,0.18);
-      align-items: stretch;
-    }
-    .log-row:hover { background: rgba(255,255,255,0.028); }
-    .log-row-time {
-      padding: 3px 8px; color: #525880; font-size: 0.67rem;
-      white-space: nowrap; line-height: 1.7;
-      border-right: 1px solid rgba(53,56,96,0.3);
-      display: flex; align-items: center;
-      user-select: none;
-    }
-    .log-row-badge {
-      padding: 3px 6px; font-size: 0.71rem; font-weight: 700;
-      text-align: center; white-space: nowrap; line-height: 1.7;
-      border-right: 1px solid rgba(53,56,96,0.3);
-      display: flex; align-items: center; justify-content: center;
-      user-select: none;
-    }
-    .log-row-text {
-      padding: 3px 10px; white-space: pre-wrap; word-break: break-word;
-      line-height: 1.65; color: #9ba3c4;
-    }
-    /* Row type colour variants */
-    .log-row.log-pass  { background: rgba(74,222,128,0.03); }
-    .log-row.log-pass  .log-row-badge { color: #4ade80; }
-    .log-row.log-pass  .log-row-text  { color: #4ade80; }
-    .log-row.log-fail  { background: rgba(248,113,113,0.04); }
-    .log-row.log-fail  .log-row-badge { color: #f87171; }
-    .log-row.log-fail  .log-row-text  { color: #f87171; }
-    .log-row.log-info  .log-row-badge { color: #818cf8; }
-    .log-row.log-info  .log-row-text  { color: #818cf8; }
-    .log-row.log-warn  .log-row-badge { color: #fbbf24; }
-    .log-row.log-warn  .log-row-text  { color: #fbbf24; }
-    .log-row.log-metric .log-row-badge { color: #a5b4fc; }
-    .log-row.log-metric .log-row-text  { color: #a5b4fc; }
-    .log-row.log-bold   .log-row-badge { color: #e2e8f0; }
-    .log-row.log-bold   .log-row-text  { color: #e2e8f0; font-weight: 700; }
+    .log-placeholder { color: #525880; white-space: pre; }
+    .log-row { display: block; white-space: pre; }
+    .log-row.log-pass   { color: #4ade80; }
+    .log-row.log-fail   { color: #f87171; }
+    .log-row.log-info   { color: #818cf8; }
+    .log-row.log-warn   { color: #fbbf24; }
+    .log-row.log-metric { color: #a5b4fc; }
+    .log-row.log-bold   { color: #e2e8f0; font-weight: 700; }
+    .log-row            { color: #9ba3c4; }
 
     /* Progress */
     .progress-bar-container { height: 5px; background: #1a1b2e; overflow: hidden; flex-shrink: 0; display: none; }
@@ -678,47 +642,17 @@ function stopRun() {
   showToast('Test stopped', 'error');
 }
 
-// ─── Log Panel — Heroku-style grid (time | tag | message) ─────────────────────
-const LOG_TAGS = {
-  'log-pass':   'PASS',
-  'log-fail':   'FAIL',
-  'log-warn':   'WARN',
-  'log-info':   'INFO',
-  'log-metric': 'METRIC',
-  'log-bold':   'k6',
-  '':           'k6',
-};
-
-function nowHHMMSS() {
-  return new Date().toTimeString().slice(0, 8);
-}
-
+// ─── Log Panel — raw k6 terminal output ───────────────────────────────────────
 function appendLog(text, cls) {
-  if (!text || !text.trim()) return;
   const body = document.getElementById('logBody');
   const ph = body.querySelector('.log-placeholder');
   if (ph) ph.remove();
 
   const row = document.createElement('div');
   row.className = 'log-row' + (cls ? ' ' + cls : '');
+  row.textContent = text;
 
-  const timeEl = document.createElement('span');
-  timeEl.className = 'log-row-time';
-  timeEl.textContent = nowHHMMSS();
-
-  const badgeEl = document.createElement('span');
-  badgeEl.className = 'log-row-badge';
-  badgeEl.textContent = LOG_TAGS[cls] || 'k6';
-
-  const msgEl = document.createElement('span');
-  msgEl.className = 'log-row-text';
-  msgEl.textContent = text;
-
-  row.appendChild(timeEl);
-  row.appendChild(badgeEl);
-  row.appendChild(msgEl);
-
-  body.insertBefore(row, body.firstChild);  // newest at top; older scroll down
+  body.insertBefore(row, body.firstChild);  // newest at top
   body.scrollTop = 0;
 }
 
@@ -732,12 +666,7 @@ function copyLog() {
   const rows = document.querySelectorAll('#logBody .log-row');
   if (!rows.length) { showToast('Nothing to copy', 'error'); return; }
   // Rows are newest-first in the DOM; reverse so copied text is chronological
-  const lines = Array.from(rows).reverse().map(row => {
-    const time  = row.querySelector('.log-row-time')?.textContent?.trim() || '';
-    const badge = row.querySelector('.log-row-badge')?.textContent?.trim() || '';
-    const msg   = row.querySelector('.log-row-text')?.textContent?.trim() || '';
-    return `[${time}] ${badge.padEnd(6)} ${msg}`;
-  });
+  const lines = Array.from(rows).reverse().map(r => r.textContent);
   navigator.clipboard.writeText(lines.join('\n')).then(() => {
     const btn = document.getElementById('btnCopyLog');
     btn.textContent = '✓ Copied';
