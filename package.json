@@ -9,6 +9,8 @@
     "all:smoke": "dotenv -- k6 run cypress/e2e/smoke/all-modules.smoke.test.js",
     "preall:load": "node -e \"require('fs').mkdirSync('cypress/e2e/load/reports',{recursive:true})\"",
     "all:load": "dotenv -- k6 run cypress/e2e/load/all-modules.load.test.js",
+    "preall:stress": "node -e \"require('fs').mkdirSync('cypress/e2e/stress/reports',{recursive:true})\"",
+    "all:stress": "dotenv -- k6 run cypress/e2e/stress/all-modules.stress.test.js",
     "prelogin:load": "node -e \"require('fs').mkdirSync('cypress/e2e/load/reports',{recursive:true})\"",
     "login:load": "dotenv -- k6 run cypress/e2e/load/login.load.test.js",
     "preorders:load": "node -e \"require('fs').mkdirSync('cypress/e2e/load/reports',{recursive:true})\"",

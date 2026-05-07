@@ -1,21 +1,36 @@
 /**
- * Load test — All modules combined
+ * Stress test — All modules combined
  *
- * Runs every GET endpoint across all modules in a single test:
- *   Orders          (6 endpoints)
- *   Subscriptions   (4 endpoints)
- *   Customers       (5 endpoints)
- *   Invoices        (4 endpoints)
- *   Transactions    (4 endpoints)
- *   Draft Orders    (4 endpoints)
- *   Recurring Payments (4 endpoints)
- *   Products        (5 endpoints)
- *   Retailers       (4 endpoints)
- *   Vouchers        (4 endpoints)
+ * Purpose : Push beyond normal capacity to find the API's breaking point.
+ *           Runs all 44 GET endpoints with a stepped ramp to 150 VUs peak.
+ *           Thresholds are set at 2× load-test values — some degradation is
+ *           expected and accepted; complete failures (HTTP 5xx) are not.
+ *
+ * VU profile (3-phase ramp):
+ *   0 →  50 VUs over 2 min  (warm-up)
+ *        50 VUs held  3 min  (moderate stress)
+ *   50 → 100 VUs over 2 min  (high load)
+ *       100 VUs held  3 min  (high stress)
+ *  100 → 150 VUs over 2 min  (peak / breaking point)
+ *       150 VUs held  3 min  (peak stress)
+ *        0  VUs over  2 min  (cool-down)
+ *   Total: ~17 min
+ *
+ * Modules covered:
+ *   Orders              (6 endpoints)
+ *   Subscriptions       (4 endpoints)
+ *   Customers           (5 endpoints)
+ *   Invoices            (4 endpoints)
+ *   Transactions        (4 endpoints)
+ *   Draft Orders        (4 endpoints)
+ *   Recurring Payments  (4 endpoints)
+ *   Products            (5 endpoints)
+ *   Retailers           (4 endpoints)
+ *   Vouchers            (4 endpoints)
  *
  * Total: 44 endpoints per iteration
  *
- * Run: npm run all:load
+ * Run: npm run all:stress
  */
 
 import * as k6 from '../../support/helpers/k6.js';
@@ -23,106 +38,112 @@ import { getToken, setupAuth } from '../../support/helpers/auth.js';
 import { buildHtmlReport } from '../../support/helpers/report.js';
 import { buildThresholds } from '../../support/helpers/thresholds.js';
 
-const SLEEP_BETWEEN_REQUESTS = 1; // seconds
+const SLEEP_BETWEEN_REQUESTS = 1; // seconds — same pacing as load test
 
 // ─── Endpoint definitions ─────────────────────────────────────────────────────
-// p95/p90 values are set based on actual measured results at 60 VUs + 20% headroom.
-// Search endpoints are slowest as they scan more data under concurrent load.
+// p95/p90 = 2× load-test baselines.  Under 150 VUs we expect latency to roughly
+// double; these thresholds detect catastrophic degradation, not normal slow-down.
+// recurring_payments.get_by_search already had p95=5500ms at load → set to 11000ms.
 const ENDPOINTS = [
-  // Orders — measured p95: list 1.63s, by_id 1.32s, filter 1.57s, search 2.17s
-  { tag: 'orders.get_list',                p95: 2000, p90: 1600 },
-  { tag: 'orders.get_by_id',               p95: 1600, p90: 1400 },
-  { tag: 'orders.get_payment_update_link', p95: 1100, p90: 1000 },
-  { tag: 'orders.get_payment_methods',     p95: 1100, p90: 1000 },
-  { tag: 'orders.get_by_filter',           p95: 1900, p90: 1600 },
-  { tag: 'orders.get_by_search',           p95: 2600, p90: 2200 },
+  // Orders
+  { tag: 'orders.get_list',                p95: 4000, p90: 2900 },
+  { tag: 'orders.get_by_id',               p95: 3200, p90: 2500 },
+  { tag: 'orders.get_payment_update_link', p95: 2200, p90: 1800 },
+  { tag: 'orders.get_payment_methods',     p95: 2200, p90: 1800 },
+  { tag: 'orders.get_by_filter',           p95: 3800, p90: 2900 },
+  { tag: 'orders.get_by_search',           p95: 5200, p90: 4000 },
 
-  // Subscriptions — measured p95: list 1.26s, filter 1.3s, search 2.16s
-  { tag: 'subscriptions.get_list',      p95: 2000, p90: 1900 },
-  { tag: 'subscriptions.get_by_id',     p95: 1200, p90: 1100 },
-  { tag: 'subscriptions.get_by_filter', p95: 1600, p90: 1400 },
-  { tag: 'subscriptions.get_by_search', p95: 2600, p90: 2200 },
+  // Subscriptions
+  { tag: 'subscriptions.get_list',         p95: 4000, p90: 3400 },
+  { tag: 'subscriptions.get_by_id',        p95: 2400, p90: 2000 },
+  { tag: 'subscriptions.get_by_filter',    p95: 3200, p90: 2500 },
+  { tag: 'subscriptions.get_by_search',    p95: 5200, p90: 4000 },
 
-  // Customers — all well within 1100ms at 60 VUs
-  { tag: 'customers.get_list',         p95: 1100, p90: 1000 },
-  { tag: 'customers.get_by_id',        p95: 1100, p90: 1000 },
-  { tag: 'customers.get_balance',      p95: 1100, p90: 1000 },
-  { tag: 'customers.get_by_filter',    p95: 1100, p90: 1000 },
-  { tag: 'customers.get_by_search',    p95: 1100, p90: 1000 },
+  // Customers
+  { tag: 'customers.get_list',             p95: 2200, p90: 1800 },
+  { tag: 'customers.get_by_id',            p95: 2200, p90: 1800 },
+  { tag: 'customers.get_balance',          p95: 2200, p90: 1800 },
+  { tag: 'customers.get_by_filter',        p95: 2200, p90: 1800 },
+  { tag: 'customers.get_by_search',        p95: 2200, p90: 1800 },
 
-  // Invoices — measured p95: list 1.34s, by_number 1.52s, filter 1.26s, search 2.34s
-  { tag: 'invoices.get_list',        p95: 1600, p90: 1400 },
-  { tag: 'invoices.get_by_number',   p95: 1900, p90: 1800 },
-  { tag: 'invoices.get_by_filter',   p95: 1600, p90: 1400 },
-  { tag: 'invoices.get_by_search',   p95: 2800, p90: 2200 },
+  // Invoices
+  { tag: 'invoices.get_list',              p95: 3200, p90: 2500 },
+  { tag: 'invoices.get_by_number',         p95: 3800, p90: 3200 },
+  { tag: 'invoices.get_by_filter',         p95: 3200, p90: 2500 },
+  { tag: 'invoices.get_by_search',         p95: 5600, p90: 4000 },
 
-  // Transactions — measured p95: list 1.22s, filter 1.22s, search 2.05s
-  { tag: 'transactions.get_list',      p95: 1500, p90: 1300 },
-  { tag: 'transactions.get_by_id',     p95: 1100, p90: 1000 },
-  { tag: 'transactions.get_by_filter', p95: 1500, p90: 1300 },
-  { tag: 'transactions.get_by_search', p95: 2500, p90: 2200 },
+  // Transactions
+  { tag: 'transactions.get_list',          p95: 3000, p90: 2300 },
+  { tag: 'transactions.get_by_id',         p95: 2200, p90: 1800 },
+  { tag: 'transactions.get_by_filter',     p95: 3000, p90: 2300 },
+  { tag: 'transactions.get_by_search',     p95: 5000, p90: 4000 },
 
-  // Draft Orders — all under 1100ms at 60 VUs
-  { tag: 'draft_orders.get_list',      p95: 1200, p90: 1100 },
-  { tag: 'draft_orders.get_by_id',     p95: 1100, p90: 1000 },
-  { tag: 'draft_orders.get_by_filter', p95: 1200, p90: 1100 },
-  { tag: 'draft_orders.get_by_search', p95: 1300, p90: 1200 },
+  // Draft Orders
+  { tag: 'draft_orders.get_list',          p95: 2400, p90: 2000 },
+  { tag: 'draft_orders.get_by_id',         p95: 2200, p90: 1800 },
+  { tag: 'draft_orders.get_by_filter',     p95: 2400, p90: 2000 },
+  { tag: 'draft_orders.get_by_search',     p95: 2600, p90: 2200 },
 
-  // Recurring Payments — measured p95: list 1.53s, filter 1.46s, search 4.53s (slowest)
-  { tag: 'recurring_payments.get_list',      p95: 1900, p90: 1600 },
-  { tag: 'recurring_payments.get_by_id',     p95: 1100, p90: 1000 },
-  { tag: 'recurring_payments.get_by_filter', p95: 1800, p90: 1600 },
-  { tag: 'recurring_payments.get_by_search', p95: 5500, p90: 4600 },
+  // Recurring Payments — already slow at load; double budget accordingly
+  { tag: 'recurring_payments.get_list',      p95: 3800,  p90: 2900 },
+  { tag: 'recurring_payments.get_by_id',     p95: 2200,  p90: 1800 },
+  { tag: 'recurring_payments.get_by_filter', p95: 3600,  p90: 2900 },
+  { tag: 'recurring_payments.get_by_search', p95: 11000, p90: 8300 },
 
-  // Products — measured p95: all_variants 1.35s, others under 1100ms
-  { tag: 'products.get_list',          p95: 1100, p90: 1000 },
-  { tag: 'products.get_variants',      p95: 1100, p90: 1000 },
-  { tag: 'products.get_all_variants',  p95: 1600, p90: 1500 },
-  { tag: 'products.get_by_filter',     p95: 1100, p90: 1000 },
-  { tag: 'products.get_by_search',     p95: 1100, p90: 1000 },
+  // Products
+  { tag: 'products.get_list',              p95: 2200, p90: 1800 },
+  { tag: 'products.get_variants',          p95: 2200, p90: 1800 },
+  { tag: 'products.get_all_variants',      p95: 3200, p90: 2700 },
+  { tag: 'products.get_by_filter',         p95: 2200, p90: 1800 },
+  { tag: 'products.get_by_search',         p95: 2200, p90: 1800 },
 
-  // Retailers — all under 1100ms at 60 VUs
-  { tag: 'retailers.get_list',           p95: 1100, p90: 1000 },
-  { tag: 'retailers.get_by_location_id', p95: 1100, p90: 1000 },
-  { tag: 'retailers.get_by_filter',      p95: 1100, p90: 1000 },
-  { tag: 'retailers.get_by_search',      p95: 1100, p90: 1000 },
+  // Retailers
+  { tag: 'retailers.get_list',             p95: 2200, p90: 1800 },
+  { tag: 'retailers.get_by_location_id',   p95: 2200, p90: 1800 },
+  { tag: 'retailers.get_by_filter',        p95: 2200, p90: 1800 },
+  { tag: 'retailers.get_by_search',        p95: 2200, p90: 1800 },
 
-  // Vouchers — all under 1100ms at 60 VUs
-  { tag: 'vouchers.get_list',        p95: 1100, p90: 1000 },
-  { tag: 'vouchers.get_by_code',     p95: 1100, p90: 1000 },
-  { tag: 'vouchers.get_by_filter',   p95: 1100, p90: 1000 },
-  { tag: 'vouchers.get_by_search',   p95: 1100, p90: 1000 },
+  // Vouchers
+  { tag: 'vouchers.get_list',              p95: 2200, p90: 1800 },
+  { tag: 'vouchers.get_by_code',           p95: 2200, p90: 1800 },
+  { tag: 'vouchers.get_by_filter',         p95: 2200, p90: 1800 },
+  { tag: 'vouchers.get_by_search',         p95: 2200, p90: 1800 },
 ];
 
 const limit = Object.fromEntries(ENDPOINTS.map(({ tag, p95 }) => [tag, p95]));
 
-// Build per-endpoint duration + checks thresholds, then override error rates.
-// Combined test at 60 VUs sees ~2% error rate due to server load — allow up to 5%.
-// http_reqs{module:all} is set to rate>=0 because each request is tagged with its
-// own module (orders, customers, etc.), not 'all', so that counter is always 0.
-const baseThresholds = buildThresholds('all', ENDPOINTS);
-const errorRateOverrides = Object.fromEntries(
-  ENDPOINTS.map(({ tag }) => [`http_req_failed{ep:${tag}}`, ['rate<0.05']])
-);
+// Build per-endpoint duration + checks thresholds, then override error and checks rates.
+// Under peak stress (150 VUs) we allow up to 10% error rate and 90%+ check pass rate.
+const baseThresholds = buildThresholds('stress', ENDPOINTS);
+
+// Override per-endpoint error rate and checks to stress-appropriate values
+const stressOverrides = Object.fromEntries([
+  ...ENDPOINTS.map(({ tag }) => [`http_req_failed{ep:${tag}}`, ['rate<0.10']]),
+  ...ENDPOINTS.map(({ tag }) => [`checks{ep:${tag}}`,          ['rate>0.90']]),
+]);
 
 export const options = {
   thresholds: {
     ...baseThresholds,
-    http_req_failed:           ['rate<0.05'], // raised from 1% — 60 VU combined load
-    'http_req_failed{module:all}': ['rate<0.05'],
-    'http_reqs{module:all}':   ['rate>=0'],   // no requests tagged module:all; skip gate
-    ...errorRateOverrides,
+    http_req_failed:                ['rate<0.10'], // 10% tolerance at peak stress
+    'http_req_failed{module:stress}': ['rate<0.10'],
+    'http_reqs{module:stress}':      ['rate>=0'],   // no requests tagged module:stress; skip gate
+    ...stressOverrides,
   },
   scenarios: {
-    load: {
-      executor: 'ramping-vus',
-      startVUs: 0,
+    stress: {
+      executor:  'ramping-vus',
+      startVUs:  0,
       stages: [
-        { duration: '30s', target: 5 }, // ramp up
-        { duration: '30s', target: 5 }, // hold
-        { duration: '30s', target: 5 }, // ramp down
+        { duration: '2m', target: 50  }, // ramp to moderate stress
+        { duration: '3m', target: 50  }, // hold moderate
+        { duration: '2m', target: 100 }, // ramp to high stress
+        { duration: '3m', target: 100 }, // hold high
+        { duration: '2m', target: 150 }, // ramp to peak — breaking point
+        { duration: '3m', target: 150 }, // hold peak
+        { duration: '2m', target: 0   }, // cool-down
       ],
-      tags: { scenario: 'load' },
+      tags: { scenario: 'stress' },
     },
   },
 };
@@ -219,8 +240,8 @@ export default function (data) {
 
   const params = (module, ep) => ({
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Accept: 'application/json' },
-    tags: { scenario: 'load', module, ep },
-    timeout: '10s',
+    tags: { scenario: 'stress', module, ep },
+    timeout: '20s', // doubled vs load test — stress may cause server slowness
   });
 
   // ── ORDERS ──────────────────────────────────────────────────────────────────
@@ -585,14 +606,14 @@ export default function (data) {
 }
 
 export function teardown(data) {
-  console.log('All-modules load test complete.');
+  console.log('All-modules stress test complete.');
 }
 
 // ─── Report ───────────────────────────────────────────────────────────────────
 const REPORT_CONFIG = {
-  title:    'All Modules Load Test Report',
-  subtitle: '5 VUs · 15s · 44 endpoints',
-  module:   'all',
+  title:    'All Modules Stress Test Report',
+  subtitle: '0 → 50 → 100 → 150 VUs · 17 min · 44 endpoints',
+  module:   'stress',
   endpoints: ENDPOINTS.map(({ tag, p95 }) => ({
     tag,
     label: {
@@ -629,8 +650,8 @@ const REPORT_CONFIG = {
       'draft_orders.get_by_filter':     'GET /draft-orders (filter)',
       'draft_orders.get_by_search':     'GET /draft-orders?search=:name',
 
-      'recurring_payments.get_list':    'GET /recurring-payments (list)',
-      'recurring_payments.get_by_id':   'GET /recurring-payments/:id',
+      'recurring_payments.get_list':      'GET /recurring-payments (list)',
+      'recurring_payments.get_by_id':     'GET /recurring-payments/:id',
       'recurring_payments.get_by_filter': 'GET /recurring-payments (filter)',
       'recurring_payments.get_by_search': 'GET /recurring-payments?search=:subscription_id',
 
@@ -656,7 +677,7 @@ const REPORT_CONFIG = {
 
 export function handleSummary(data) {
   return {
-    'cypress/e2e/load/reports/all-modules-load-report.html': buildHtmlReport(data, REPORT_CONFIG),
+    'cypress/e2e/stress/reports/all-modules-stress-report.html': buildHtmlReport(data, REPORT_CONFIG),
     stdout: k6.textSummary(data, { indent: '  ', enableColors: true }),
   };
 }
