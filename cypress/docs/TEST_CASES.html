@@ -63,26 +63,60 @@
     .right-panel { flex: 1; min-width: 340px; background: #222540; border-left: 1px solid #353860; display: flex; flex-direction: column; }
     .log-header { padding: 14px 18px; background: #1e2040; border-bottom: 1px solid #353860; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
     .log-header h3 { font-size: 0.9rem; color: #d4d8f0; font-weight: 600; }
-    /* Log grid */
-    .log-body { flex: 1; overflow-y: auto; padding: 6px 4px; font-family: 'Consolas', 'Fira Code', 'Courier New', monospace; font-size: 0.74rem; display: flex; flex-direction: column; gap: 1px; }
-    .log-placeholder { padding: 14px 18px; color: #8890b5; line-height: 1.8; white-space: pre; font-size: 0.76rem; }
-    .log-row { display: grid; grid-template-columns: 22px 1fr; gap: 0 6px; padding: 2px 10px; border-radius: 4px; align-items: baseline; transition: background 0.1s; min-height: 20px; }
-    .log-row:hover { background: rgba(108,123,240,0.07); }
-    .log-row-badge { font-size: 0.72rem; text-align: center; user-select: none; }
-    .log-row-text { white-space: pre-wrap; word-break: break-all; line-height: 1.55; color: #8890b5; }
-    /* Row type variants */
-    .log-row.log-pass  { background: rgba(74,222,128,0.04); }
+    /* ── Log grid (Heroku-style) ─────────────────────────────────────────── */
+    .log-body {
+      flex: 1; overflow-y: auto; overflow-x: hidden;
+      padding: 0; margin: 0;
+      font-family: 'Consolas', 'Fira Code', 'Courier New', monospace;
+      font-size: 0.72rem;
+      background: #0d0e1a;
+    }
+    .log-placeholder {
+      padding: 18px 20px; color: #8890b5; line-height: 1.9;
+      white-space: pre; font-size: 0.75rem;
+    }
+    /* Each log line = 3-column grid */
+    .log-row {
+      display: grid;
+      grid-template-columns: 72px 58px 1fr;
+      min-height: 22px;
+      border-bottom: 1px solid rgba(53,56,96,0.18);
+      align-items: stretch;
+    }
+    .log-row:hover { background: rgba(255,255,255,0.028); }
+    .log-row-time {
+      padding: 3px 8px; color: #525880; font-size: 0.67rem;
+      white-space: nowrap; line-height: 1.7;
+      border-right: 1px solid rgba(53,56,96,0.3);
+      display: flex; align-items: center;
+      user-select: none;
+    }
+    .log-row-badge {
+      padding: 3px 6px; font-size: 0.71rem; font-weight: 700;
+      text-align: center; white-space: nowrap; line-height: 1.7;
+      border-right: 1px solid rgba(53,56,96,0.3);
+      display: flex; align-items: center; justify-content: center;
+      user-select: none;
+    }
+    .log-row-text {
+      padding: 3px 10px; white-space: pre-wrap; word-break: break-word;
+      line-height: 1.65; color: #9ba3c4;
+    }
+    /* Row type colour variants */
+    .log-row.log-pass  { background: rgba(74,222,128,0.03); }
     .log-row.log-pass  .log-row-badge { color: #4ade80; }
     .log-row.log-pass  .log-row-text  { color: #4ade80; }
-    .log-row.log-fail  { background: rgba(248,113,113,0.05); }
+    .log-row.log-fail  { background: rgba(248,113,113,0.04); }
     .log-row.log-fail  .log-row-badge { color: #f87171; }
     .log-row.log-fail  .log-row-text  { color: #f87171; }
-    .log-row.log-info  .log-row-badge { color: #6c7bf0; }
-    .log-row.log-info  .log-row-text  { color: #6c7bf0; }
+    .log-row.log-info  .log-row-badge { color: #818cf8; }
+    .log-row.log-info  .log-row-text  { color: #818cf8; }
     .log-row.log-warn  .log-row-badge { color: #fbbf24; }
     .log-row.log-warn  .log-row-text  { color: #fbbf24; }
-    .log-row.log-metric .log-row-text { color: #a5b4fc; }
-    .log-row.log-bold   .log-row-text { color: #d4d8f0; font-weight: 700; }
+    .log-row.log-metric .log-row-badge { color: #a5b4fc; }
+    .log-row.log-metric .log-row-text  { color: #a5b4fc; }
+    .log-row.log-bold   .log-row-badge { color: #e2e8f0; }
+    .log-row.log-bold   .log-row-text  { color: #e2e8f0; font-weight: 700; }
 
     /* Progress */
     .progress-bar-container { height: 5px; background: #1a1b2e; overflow: hidden; flex-shrink: 0; display: none; }
@@ -604,40 +638,48 @@ function stopRun() {
   showToast('Test stopped', 'error');
 }
 
-// ─── Log Panel (grid rows, newest at top) ─────────────────────────────────────
-const LOG_BADGES = {
-  'log-pass':   '✓',
-  'log-fail':   '✗',
-  'log-warn':   '⚠',
-  'log-info':   'ℹ',
-  'log-metric': '◈',
-  'log-bold':   '»',
+// ─── Log Panel — Heroku-style grid (time | tag | message) ─────────────────────
+const LOG_TAGS = {
+  'log-pass':   'PASS',
+  'log-fail':   'FAIL',
+  'log-warn':   'WARN',
+  'log-info':   'INFO',
+  'log-metric': 'METRIC',
+  'log-bold':   'k6',
+  '':           'k6',
 };
 
+function nowHHMMSS() {
+  return new Date().toTimeString().slice(0, 8);
+}
+
 function appendLog(text, cls) {
-  if (!text || !text.trim()) return;          // skip blank lines
+  if (!text || !text.trim()) return;
   const body = document.getElementById('logBody');
-  // Remove placeholder on first real log
   const ph = body.querySelector('.log-placeholder');
   if (ph) ph.remove();
 
   const row = document.createElement('div');
   row.className = 'log-row' + (cls ? ' ' + cls : '');
 
-  const badge = document.createElement('span');
-  badge.className = 'log-row-badge';
-  badge.textContent = LOG_BADGES[cls] || '';
+  const timeEl = document.createElement('span');
+  timeEl.className = 'log-row-time';
+  timeEl.textContent = nowHHMMSS();
 
-  const msg = document.createElement('span');
-  msg.className = 'log-row-text';
-  msg.textContent = text;
+  const badgeEl = document.createElement('span');
+  badgeEl.className = 'log-row-badge';
+  badgeEl.textContent = LOG_TAGS[cls] || 'k6';
 
-  row.appendChild(badge);
-  row.appendChild(msg);
+  const msgEl = document.createElement('span');
+  msgEl.className = 'log-row-text';
+  msgEl.textContent = text;
 
-  // Append → newest entry at bottom; auto-scroll down to show it
+  row.appendChild(timeEl);
+  row.appendChild(badgeEl);
+  row.appendChild(msgEl);
+
   body.appendChild(row);
-  body.scrollTop = body.scrollHeight;
+  body.scrollTop = body.scrollHeight;   // auto-scroll to latest; user can scroll up freely
 }
 
 function clearLog() {
