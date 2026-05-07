@@ -3,22 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>unified-customer-api — E2E Test Dashboard</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
-  <script>
-    if (!window.jspdf) {
-      var s = document.createElement('script');
-      s.src = 'https://unpkg.com/jspdf@2.5.2/dist/jspdf.umd.min.js';
-      document.head.appendChild(s);
-    }
-  </script>
+  <title>k6 Load Test Dashboard</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-      background: #1a1b2e; color: #d4d8f0;
-      min-height: 100vh; display: flex; flex-direction: column;
-    }
+    body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: #1a1b2e; color: #d4d8f0; min-height: 100vh; display: flex; flex-direction: column; }
     ::-webkit-scrollbar { width: 8px; height: 8px; }
     ::-webkit-scrollbar-track { background: #1a1b2e; }
     ::-webkit-scrollbar-thumb { background: #353860; border-radius: 4px; }
@@ -29,7 +17,7 @@
     .header-top { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; }
     .header h1 { font-size: 1.5rem; font-weight: 700; color: #e8ecff; letter-spacing: -0.4px; }
     .header h1 span { color: #6c7bf0; }
-    .header-actions { display: flex; gap: 10px; align-items: center; }
+    .header-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
     .server-status { display: inline-flex; align-items: center; gap: 6px; font-size: 0.78rem; font-weight: 600; padding: 5px 14px; border-radius: 20px; background: #2d3050; border: 1px solid #353860; }
     .server-status.online { color: #4ade80; border-color: #2a5a3a; background: #1a3a2a; }
     .server-status.offline { color: #f87171; border-color: #5a2020; background: #3a1a1a; }
@@ -37,28 +25,29 @@
     .status-dot.online { background: #4ade80; box-shadow: 0 0 6px #4ade80; }
     .status-dot.offline { background: #f87171; box-shadow: 0 0 6px #f87171; }
 
-    /* Buttons */
-    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 18px; border-radius: 10px; border: none; font-size: 0.84rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease; white-space: nowrap; }
-    .btn-primary { background: #6c7bf0; color: #fff; }
-    .btn-primary:hover { background: #5a69e0; transform: translateY(-1px); }
-    .btn-secondary { background: #2d3050; color: #8890b5; border: 1px solid #353860; }
-    .btn-secondary:hover { background: #353860; color: #d4d8f0; }
-    .btn-danger { background: #5a2020; color: #f87171; border: 1px solid #7a3030; }
-    .btn-danger:hover { background: #7a3030; color: #fca5a5; }
-    .btn-run { background: #1a3a2a; color: #4ade80; border: 1px solid #2a5a3a; font-size: 0.76rem; padding: 4px 12px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.2s ease; white-space: nowrap; }
-    .btn-run:hover { background: #2a5a3a; color: #86efac; }
-    .btn-run.running { background: #3a2f1a; color: #fbbf24; border-color: #6b5520; cursor: wait; }
-    .btn-run.done-ok { background: #1a3a2a; color: #4ade80; border-color: #2a7a4a; }
-    .btn-run.done-fail { background: #3a1a1a; color: #f87171; border-color: #7a3030; }
-
     /* Stats */
     .stats-row { display: flex; gap: 16px; margin-top: 18px; flex-wrap: wrap; }
-    .stat-box { background: #222540; border: 1px solid #353860; border-radius: 12px; padding: 12px 22px; text-align: center; min-width: 95px; transition: transform 0.2s ease; }
-    .stat-box:hover { transform: translateY(-2px); }
+    .stat-box { background: #222540; border: 1px solid #353860; border-radius: 12px; padding: 12px 22px; text-align: center; min-width: 95px; }
     .stat-box .num { font-size: 1.8rem; font-weight: 700; color: #6c7bf0; }
     .stat-box .lbl { font-size: 0.7rem; color: #8890b5; text-transform: uppercase; letter-spacing: 0.8px; margin-top: 2px; }
     .stat-box.pass .num { color: #4ade80; }
     .stat-box.fail .num { color: #f87171; }
+
+    /* Buttons */
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 18px; border-radius: 10px; border: none; font-size: 0.84rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease; white-space: nowrap; }
+    .btn-primary { background: #6c7bf0; color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: #5a69e0; transform: translateY(-1px); }
+    .btn-secondary { background: #2d3050; color: #8890b5; border: 1px solid #353860; }
+    .btn-secondary:hover:not(:disabled) { background: #353860; color: #d4d8f0; }
+    .btn-danger { background: #5a2020; color: #f87171; border: 1px solid #7a3030; }
+    .btn-danger:hover:not(:disabled) { background: #7a3030; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-run { background: #1a3a2a; color: #4ade80; border: 1px solid #2a5a3a; font-size: 0.76rem; padding: 5px 14px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.2s; white-space: nowrap; }
+    .btn-run:hover:not(:disabled) { background: #2a5a3a; }
+    .btn-run:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-run.running { background: #3a2f1a; color: #fbbf24; border-color: #6b5520; cursor: wait; }
+    .btn-run.done-ok { background: #1a3a2a; color: #4ade80; border-color: #2a7a4a; }
+    .btn-run.done-fail { background: #3a1a1a; color: #f87171; border-color: #7a3030; }
 
     /* Tab Bar */
     .tab-bar { background: #1e2040; border-bottom: 1px solid #353860; padding: 10px 20px 0; display: flex; flex-wrap: wrap; gap: 4px; flex-shrink: 0; }
@@ -69,85 +58,70 @@
     .tab-btn.active .tab-badge { background: #6c7bf0; color: #fff; }
 
     /* Split Layout */
-    .main-split { display: flex; flex: 1; overflow: hidden; }
-    .left-panel { width: 40%; flex-shrink: 0; overflow-y: auto; padding: 20px 24px; min-width: 0; }
-    .right-panel { width: 60%; min-width: 380px; background: #222540; border-left: 1px solid #353860; display: flex; flex-direction: column; flex-shrink: 0; }
+    .main-split { display: flex; flex: 1; overflow: hidden; min-height: 0; }
+    .left-panel { width: 42%; flex-shrink: 0; overflow-y: auto; padding: 20px 24px; min-width: 0; }
+    .right-panel { flex: 1; min-width: 340px; background: #222540; border-left: 1px solid #353860; display: flex; flex-direction: column; }
     .log-header { padding: 14px 18px; background: #1e2040; border-bottom: 1px solid #353860; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
     .log-header h3 { font-size: 0.9rem; color: #d4d8f0; font-weight: 600; }
-    .log-body { flex: 1; overflow-y: auto; padding: 14px 18px; font-family: 'Consolas', 'Fira Code', 'Courier New', monospace; font-size: 0.78rem; line-height: 1.6; color: #8890b5; white-space: pre-wrap; word-break: break-word; }
-    .log-body .log-pass { color: #4ade80; }
-    .log-body .log-fail { color: #f87171; }
-    .log-body .log-info { color: #6c7bf0; }
-    .log-body .log-warn { color: #fbbf24; }
-    .log-body .log-bold { font-weight: 700; color: #d4d8f0; }
+    .log-body { flex: 1; overflow-y: auto; padding: 14px 18px; font-family: 'Consolas', 'Fira Code', 'Courier New', monospace; font-size: 0.76rem; line-height: 1.65; color: #8890b5; white-space: pre-wrap; word-break: break-word; }
+    .log-pass { color: #4ade80; }
+    .log-fail { color: #f87171; }
+    .log-info { color: #6c7bf0; }
+    .log-warn { color: #fbbf24; }
+    .log-bold { font-weight: 700; color: #d4d8f0; }
+    .log-metric { color: #a5b4fc; }
 
-    /* Progress Bar */
-    .progress-bar-container { height: 6px; background: #1a1b2e; border-radius: 3px; overflow: hidden; margin: 8px 18px; display: none; flex-shrink: 0; }
+    /* Progress */
+    .progress-bar-container { height: 5px; background: #1a1b2e; overflow: hidden; flex-shrink: 0; display: none; }
     .progress-bar-container.visible { display: block; }
-    .progress-bar { height: 100%; background: linear-gradient(90deg, #6c7bf0, #4ade80); border-radius: 3px; width: 0%; transition: width 0.3s ease; }
+    .progress-bar { height: 100%; background: linear-gradient(90deg, #6c7bf0, #4ade80); width: 0%; transition: width 0.4s ease; }
 
     /* Tab Content */
     .tab-content { display: none; }
     .tab-content.active { display: block; }
 
-    /* Accordion */
-    .accordion { background: #222540; border: 1px solid #353860; border-radius: 12px; margin-bottom: 14px; overflow: hidden; transition: box-shadow 0.2s ease; }
-    .accordion:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
-    .accordion-header { padding: 14px 18px; display: flex; align-items: center; gap: 12px; cursor: pointer; user-select: none; transition: background 0.15s ease; }
-    .accordion-header:hover { background: #2a2d50; }
-    .accordion-chevron { font-size: 0.7rem; color: #8890b5; transition: transform 0.2s ease; flex-shrink: 0; width: 16px; }
-    .accordion.open .accordion-chevron { transform: rotate(90deg); }
-    .accordion-title { font-size: 0.88rem; font-weight: 600; color: #d4d8f0; flex: 1; }
-    .accordion-counters { font-size: 0.72rem; color: #8890b5; display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
-    .accordion-counters .c-pass { color: #4ade80; }
-    .accordion-counters .c-fail { color: #f87171; }
-    .accordion-body { display: none; border-top: 1px solid #353860; }
-    .accordion.open .accordion-body { display: block; }
+    /* Module Card */
+    .module-card { background: #222540; border: 1px solid #353860; border-radius: 12px; margin-bottom: 16px; overflow: hidden; transition: box-shadow 0.2s; }
+    .module-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
+    .module-card-header { padding: 14px 18px; display: flex; align-items: center; gap: 12px; cursor: pointer; user-select: none; }
+    .module-card-header:hover { background: #2a2d50; }
+    .chevron { font-size: 0.7rem; color: #8890b5; transition: transform 0.2s; width: 16px; flex-shrink: 0; }
+    .module-card.open .chevron { transform: rotate(90deg); }
+    .module-title { font-size: 0.9rem; font-weight: 600; color: #d4d8f0; flex: 1; }
+    .module-meta { font-size: 0.72rem; color: #8890b5; white-space: nowrap; }
+    .module-status { font-size: 0.72rem; font-weight: 700; padding: 3px 10px; border-radius: 8px; white-space: nowrap; }
+    .module-status.notrun { background: #2d3050; color: #8890b5; }
+    .module-status.running { background: #3a2f1a; color: #fbbf24; }
+    .module-status.passed { background: #1a3a2a; color: #4ade80; }
+    .module-status.failed { background: #3a1a1a; color: #f87171; }
+    .module-body { display: none; border-top: 1px solid #353860; }
+    .module-card.open .module-body { display: block; }
 
-    /* Table */
-    .test-table { width: 100%; border-collapse: collapse; }
-    .test-table th { text-align: left; padding: 10px 16px; font-size: 0.7rem; color: #8890b5; text-transform: uppercase; letter-spacing: 0.7px; background: #1e2040; border-bottom: 1px solid #353860; }
-    .test-table td { padding: 10px 16px; font-size: 0.82rem; border-bottom: 1px solid rgba(53,56,96,0.4); color: #d4d8f0; }
-    .test-table tr:last-child td { border-bottom: none; }
-    .test-table tr:hover td { background: rgba(108,123,240,0.04); }
-    .test-table .col-num { width: 40px; text-align: center; color: #8890b5; }
-    .test-table .col-db { width: 90px; text-align: center; }
-    .test-table .col-status { width: 100px; text-align: center; }
+    /* Endpoint Table */
+    .ep-table { width: 100%; border-collapse: collapse; }
+    .ep-table th { text-align: left; padding: 9px 16px; font-size: 0.68rem; color: #8890b5; text-transform: uppercase; letter-spacing: 0.7px; background: #1e2040; border-bottom: 1px solid #353860; }
+    .ep-table td { padding: 9px 16px; font-size: 0.8rem; border-bottom: 1px solid rgba(53,56,96,0.4); color: #d4d8f0; }
+    .ep-table tr:last-child td { border-bottom: none; }
+    .ep-table tr:hover td { background: rgba(108,123,240,0.04); }
+    .ep-tag { font-family: monospace; font-size: 0.72rem; color: #a5b4fc; }
+    .ep-limit { font-family: monospace; font-size: 0.76rem; }
+    .ep-result { font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 6px; white-space: nowrap; }
+    .ep-result.notrun { background: #2d3050; color: #8890b5; }
+    .ep-result.pass { background: #1a3a2a; color: #4ade80; }
+    .ep-result.fail { background: #3a1a1a; color: #f87171; }
 
-    /* Status Badges */
-    .badge { display: inline-block; padding: 3px 10px; border-radius: 8px; font-size: 0.7rem; font-weight: 700; cursor: pointer; transition: all 0.15s ease; user-select: none; text-transform: uppercase; letter-spacing: 0.5px; }
-    .badge:hover { transform: scale(1.05); }
-    .badge-notrun { background: #2d3050; color: #8890b5; }
-    .badge-pass { background: #1a3a2a; color: #4ade80; }
-    .badge-fail { background: #3a1a1a; color: #f87171; }
-    .badge-blocked { background: #3a2f1a; color: #fbbf24; }
-    .badge-skip { background: #2d3050; color: #6c7bf0; }
-    .db-badge { font-size: 0.7rem; padding: 2px 8px; border-radius: 6px; font-weight: 600; }
-    .db-yes { background: #1a3a2a; color: #4ade80; }
-    .db-no { background: #2d3050; color: #8890b5; }
-
-    /* Reports */
+    /* Reports Tab */
     .reports-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
-    .report-card { background: #222540; border: 1px solid #353860; border-radius: 12px; padding: 16px; cursor: pointer; transition: all 0.2s ease; position: relative; }
+    .report-card { background: #222540; border: 1px solid #353860; border-radius: 12px; padding: 16px; cursor: pointer; transition: all 0.2s; position: relative; }
     .report-card:hover { border-color: #6c7bf0; transform: translateY(-2px); box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
     .report-card.selected { border-color: #6c7bf0; background: #2a2d55; }
-    .report-card .rc-title { font-size: 0.85rem; font-weight: 600; color: #d4d8f0; margin-bottom: 6px; }
-    .report-card .rc-time { font-size: 0.72rem; color: #8890b5; margin-bottom: 8px; }
-    .report-card .rc-stats { display: flex; gap: 10px; font-size: 0.75rem; }
-    .report-card .rc-pass { color: #4ade80; }
-    .report-card .rc-fail { color: #f87171; }
-    .report-card .rc-check { position: absolute; top: 10px; right: 10px; width: 18px; height: 18px; border: 2px solid #353860; border-radius: 4px; cursor: pointer; }
+    .rc-title { font-size: 0.85rem; font-weight: 600; color: #d4d8f0; margin-bottom: 4px; }
+    .rc-time { font-size: 0.72rem; color: #8890b5; margin-bottom: 8px; }
+    .rc-stats { display: flex; gap: 10px; font-size: 0.75rem; flex-wrap: wrap; }
+    .rc-pass { color: #4ade80; }
+    .rc-fail { color: #f87171; }
+    .rc-check { position: absolute; top: 10px; right: 10px; width: 18px; height: 18px; border: 2px solid #353860; border-radius: 4px; cursor: pointer; }
     .report-card.selected .rc-check { background: #6c7bf0; border-color: #6c7bf0; }
-    .report-detail-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(10,10,20,0.85); z-index: 1000; justify-content: center; align-items: center; }
-    .report-detail-overlay.visible { display: flex; }
-    .report-detail-modal { background: #222540; border: 1px solid #353860; border-radius: 14px; width: 90%; max-width: 800px; max-height: 80vh; overflow-y: auto; padding: 28px; }
-    .report-detail-modal h2 { font-size: 1.1rem; color: #d4d8f0; margin-bottom: 6px; }
-    .report-detail-modal .rd-time { font-size: 0.78rem; color: #8890b5; margin-bottom: 18px; }
-    .rd-test-list { list-style: none; }
-    .rd-test-item { padding: 10px 14px; border-bottom: 1px solid rgba(53,56,96,0.4); display: flex; align-items: flex-start; gap: 10px; }
-    .rd-test-item:last-child { border-bottom: none; }
-    .rd-test-title { flex: 1; font-size: 0.84rem; color: #d4d8f0; }
-    .rd-test-err { font-size: 0.76rem; color: #f87171; margin-top: 4px; font-family: monospace; }
 
     /* Toast */
     .toast-container { position: fixed; top: 20px; right: 20px; z-index: 2000; display: flex; flex-direction: column; gap: 8px; }
@@ -160,310 +134,230 @@
 
     /* Footer */
     .footer { background: #1e2040; border-top: 1px solid #353860; padding: 12px 28px; text-align: center; font-size: 0.72rem; color: #8890b5; flex-shrink: 0; }
-
-    /* Error Summary */
-    .error-summary { background: #3a1a1a; border: 1px solid #5a2020; border-radius: 10px; padding: 14px 18px; margin: 10px 18px; display: none; }
-    .error-summary.visible { display: block; }
-    .error-summary h4 { color: #f87171; font-size: 0.84rem; margin-bottom: 8px; }
-    .error-summary ul { list-style: none; }
-    .error-summary li { padding: 6px 0; border-bottom: 1px solid rgba(248,113,113,0.15); font-size: 0.78rem; color: #fca5a5; }
-    .error-summary li:last-child { border-bottom: none; }
-    .error-summary .err-title { font-weight: 600; color: #f87171; }
-    .error-summary .err-msg { color: #d4a0a0; margin-top: 2px; font-family: monospace; font-size: 0.72rem; }
   </style>
 </head>
 <body>
 
-  <div class="header">
-    <div class="header-top">
-      <h1>unified-customer-api — <span>E2E</span> Test Dashboard</h1>
-      <div class="header-actions">
-        <span class="server-status" id="serverStatus"><span class="status-dot offline"></span> Server Offline</span>
-        <button class="btn btn-secondary" onclick="doSync()">Sync</button>
-        <button class="btn btn-primary" id="runAllHeadedBtn" onclick="runAll('headed')">Run All Headed</button>
-        <button class="btn btn-secondary" id="runAllHeadlessBtn" onclick="runAll('headless')">Run All Headless</button>
-        <button class="btn btn-danger" id="stopBtn" onclick="stopTests()" style="display:none;">Stop</button>
-      </div>
-    </div>
-    <div class="stats-row">
-      <div class="stat-box"><div class="num" id="statTotal">0</div><div class="lbl">Total Tests</div></div>
-      <div class="stat-box"><div class="num" id="statFiles">0</div><div class="lbl">Test Files</div></div>
-      <div class="stat-box"><div class="num" id="statModules">0</div><div class="lbl">API Modules</div></div>
-      <div class="stat-box pass"><div class="num" id="statPassed">0</div><div class="lbl">Passed</div></div>
-      <div class="stat-box fail"><div class="num" id="statFailed">0</div><div class="lbl">Failed</div></div>
+<div class="header">
+  <div class="header-top">
+    <h1>k6 Load Test — <span>Circuly API</span> Dashboard</h1>
+    <div class="header-actions">
+      <span class="server-status" id="serverStatus"><span class="status-dot offline"></span> Server Offline</span>
+      <button class="btn btn-primary" id="btnRunAll" onclick="runModule('all', this)">▶ Run All Modules</button>
+      <button class="btn btn-danger" id="btnStop" onclick="stopRun()" style="display:none;">■ Stop</button>
     </div>
   </div>
+  <div class="stats-row">
+    <div class="stat-box"><div class="num" id="statModules">11</div><div class="lbl">Modules</div></div>
+    <div class="stat-box"><div class="num" id="statEndpoints">44</div><div class="lbl">Endpoints</div></div>
+    <div class="stat-box pass"><div class="num" id="statPassed">—</div><div class="lbl">Thresholds Passed</div></div>
+    <div class="stat-box fail"><div class="num" id="statFailed">—</div><div class="lbl">Thresholds Failed</div></div>
+    <div class="stat-box"><div class="num" id="statVUs">60</div><div class="lbl">Max VUs (All)</div></div>
+  </div>
+</div>
 
-  <div class="tab-bar" id="tabBar"></div>
+<div class="tab-bar" id="tabBar"></div>
 
-  <div class="main-split">
-    <div class="left-panel" id="leftPanel"></div>
-    <div class="right-panel">
-      <div class="log-header">
-        <h3>Live Log</h3>
-        <button class="btn btn-secondary" style="padding:4px 10px;font-size:0.72rem;" onclick="clearLog()">Clear</button>
-      </div>
-      <div class="progress-bar-container" id="progressBarContainer">
-        <div class="progress-bar" id="progressBar"></div>
-      </div>
-      <div class="error-summary" id="errorSummary">
-        <h4>Failed Tests</h4>
-        <ul id="errorList"></ul>
-      </div>
-      <div class="log-body" id="logBody">Waiting for test run...</div>
+<div class="main-split">
+  <div class="left-panel" id="leftPanel"></div>
+
+  <div class="right-panel">
+    <div class="log-header">
+      <h3 id="logTitle">Live k6 Output</h3>
+      <button class="btn btn-secondary" style="padding:4px 10px;font-size:0.72rem;" onclick="clearLog()">Clear</button>
     </div>
-  </div>
+    <div class="progress-bar-container" id="progressBar">
+      <div class="progress-bar" id="progressFill"></div>
+    </div>
+    <div class="log-body" id="logBody">Waiting for test run…
 
-  <div class="report-detail-overlay" id="reportDetailOverlay" onclick="if(event.target===this)closeReportDetail()">
-    <div class="report-detail-modal" id="reportDetailModal"></div>
-  </div>
+Start the server first:
+  node cypress/docs/sync-server.js
 
-  <div class="toast-container" id="toastContainer"></div>
-  <div class="footer" id="footerBar">unified-customer-api Test Cases</div>
+Then click ▶ Run next to any module.</div>
+  </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+<div class="footer">k6 Load Test Dashboard · Circuly API v2026-04 · 11 modules · 44 endpoints</div>
 
 <script>
-// When served from sync-server (http://127.0.0.1:7357), use relative paths (same-origin, no CORS/file:// issues).
-// When opened directly as file://, fall back to the absolute address.
 const SERVER = window.location.protocol === 'file:' ? 'http://127.0.0.1:7357' : '';
-const STATUS_CYCLE = ['notrun','pass','fail','blocked','skip'];
 
-const TABS = [
+// ─── Module definitions ────────────────────────────────────────────────────────
+const MODULES = [
   {
-    id: 'orders', label: 'Orders', num: '01',
-    files: [{ name: '01-orders/orders.cy.js', spec: 'cypress/e2e/customer-api/01-orders/orders.cy.js',
-      tests: [
-        { title: 'Test 1: Return a paginated list of orders', db: false },
-        { title: 'Test 2: Find order by ID from DB and verify via API', db: true },
-        { title: 'Test 3: Create a new order with random 12-digit order_id', db: false },
-        { title: 'Test 4: Open payment update link for a specific order', db: true },
-        { title: 'Test 5: Fetch payment details and verify provider', db: true },
-        { title: 'Test 6: Create a note to order and verify success', db: true },
-        { title: 'Test 7: Fulfill order using DB order ID', db: true },
-        { title: 'Test 8: Cancel order using DB order ID', db: true },
-        { title: 'Test 9: Tag order using DB order ID', db: true },
-        { title: 'Test 10: Create order then charge it', db: false },
-        { title: 'Test 11: Create order then generate invoice for it', db: false },
-        { title: 'Test 12: Update order address using DB order ID', db: true },
-      ]
-    }]
+    id: 'all', script: 'all:load', label: 'All Modules',
+    vus: 60, duration: '30 min',
+    endpoints: [
+      { tag: 'orders.get_list',                label: 'GET /orders (list)',                      p95: 2000, p90: 1600 },
+      { tag: 'orders.get_by_id',               label: 'GET /orders/:id',                         p95: 1600, p90: 1400 },
+      { tag: 'orders.get_payment_update_link', label: 'GET /orders/:id/payment-update-link',     p95: 1100, p90: 1000 },
+      { tag: 'orders.get_payment_methods',     label: 'GET /orders/:id/payment-methods',         p95: 1100, p90: 1000 },
+      { tag: 'orders.get_by_filter',           label: 'GET /orders (filter)',                    p95: 1900, p90: 1600 },
+      { tag: 'orders.get_by_search',           label: 'GET /orders?search=:id',                  p95: 2600, p90: 2200 },
+      { tag: 'subscriptions.get_list',         label: 'GET /subscriptions (list)',               p95: 2000, p90: 1900 },
+      { tag: 'subscriptions.get_by_id',        label: 'GET /subscriptions/:id',                  p95: 1200, p90: 1100 },
+      { tag: 'subscriptions.get_by_filter',    label: 'GET /subscriptions (filter)',             p95: 1600, p90: 1400 },
+      { tag: 'subscriptions.get_by_search',    label: 'GET /subscriptions?search=:id',           p95: 2600, p90: 2200 },
+      { tag: 'customers.get_list',             label: 'GET /customers (list)',                   p95: 1100, p90: 1000 },
+      { tag: 'customers.get_by_id',            label: 'GET /customers/:uid',                     p95: 1100, p90: 1000 },
+      { tag: 'customers.get_balance',          label: 'GET /customers/:uid/balance',             p95: 1100, p90: 1000 },
+      { tag: 'customers.get_by_filter',        label: 'GET /customers (filter)',                 p95: 1100, p90: 1000 },
+      { tag: 'customers.get_by_search',        label: 'GET /customers?search=:uid',              p95: 1100, p90: 1000 },
+      { tag: 'invoices.get_list',              label: 'GET /paginated-invoices (list)',          p95: 1600, p90: 1400 },
+      { tag: 'invoices.get_by_number',         label: 'GET /invoices/:invoice_number',           p95: 1900, p90: 1800 },
+      { tag: 'invoices.get_by_filter',         label: 'GET /paginated-invoices (filter)',        p95: 1600, p90: 1400 },
+      { tag: 'invoices.get_by_search',         label: 'GET /paginated-invoices?search=:number',  p95: 2800, p90: 2200 },
+      { tag: 'transactions.get_list',          label: 'GET /transactions (list)',                p95: 1500, p90: 1300 },
+      { tag: 'transactions.get_by_id',         label: 'GET /transactions/:id',                   p95: 1100, p90: 1000 },
+      { tag: 'transactions.get_by_filter',     label: 'GET /transactions (filter)',              p95: 1500, p90: 1300 },
+      { tag: 'transactions.get_by_search',     label: 'GET /transactions?search=:id',            p95: 2500, p90: 2200 },
+      { tag: 'draft_orders.get_list',          label: 'GET /draft-orders (list)',                p95: 1200, p90: 1100 },
+      { tag: 'draft_orders.get_by_id',         label: 'GET /draft-orders/:id',                   p95: 1100, p90: 1000 },
+      { tag: 'draft_orders.get_by_filter',     label: 'GET /draft-orders (filter)',              p95: 1200, p90: 1100 },
+      { tag: 'draft_orders.get_by_search',     label: 'GET /draft-orders?search=:name',          p95: 1300, p90: 1200 },
+      { tag: 'recurring_payments.get_list',    label: 'GET /recurring-payments (list)',          p95: 1900, p90: 1600 },
+      { tag: 'recurring_payments.get_by_id',   label: 'GET /recurring-payments/:id',             p95: 1100, p90: 1000 },
+      { tag: 'recurring_payments.get_by_filter', label: 'GET /recurring-payments (filter)',      p95: 1800, p90: 1600 },
+      { tag: 'recurring_payments.get_by_search', label: 'GET /recurring-payments?search=:sub_id',p95: 5500, p90: 4600 },
+      { tag: 'products.get_list',              label: 'GET /products (list)',                    p95: 1100, p90: 1000 },
+      { tag: 'products.get_variants',          label: 'GET /products/:id/variants',              p95: 1100, p90: 1000 },
+      { tag: 'products.get_all_variants',      label: 'GET /products/variants (all)',            p95: 1600, p90: 1500 },
+      { tag: 'products.get_by_filter',         label: 'GET /products (filter)',                  p95: 1100, p90: 1000 },
+      { tag: 'products.get_by_search',         label: 'GET /products?search=:title',             p95: 1100, p90: 1000 },
+      { tag: 'retailers.get_list',             label: 'GET /retailers (list)',                   p95: 1100, p90: 1000 },
+      { tag: 'retailers.get_by_location_id',   label: 'GET /retailers/:location_id',             p95: 1100, p90: 1000 },
+      { tag: 'retailers.get_by_filter',        label: 'GET /retailers (filter)',                 p95: 1100, p90: 1000 },
+      { tag: 'retailers.get_by_search',        label: 'GET /retailers?search=:name',             p95: 1100, p90: 1000 },
+      { tag: 'vouchers.get_list',              label: 'GET /vouchers (list)',                    p95: 1100, p90: 1000 },
+      { tag: 'vouchers.get_by_code',           label: 'GET /vouchers/:voucher_code',             p95: 1100, p90: 1000 },
+      { tag: 'vouchers.get_by_filter',         label: 'GET /vouchers (filter)',                  p95: 1100, p90: 1000 },
+      { tag: 'vouchers.get_by_search',         label: 'GET /vouchers?search=:voucher_code',      p95: 1100, p90: 1000 },
+    ]
   },
   {
-    id: 'customers', label: 'Customers', num: '02',
-    files: [{ name: '02-customers/customers.cy.js', spec: 'cypress/e2e/customer-api/02-customers/customers.cy.js',
-      tests: [
-        { title: 'Test 1: Return a paginated list of customers', db: false },
-        { title: 'Test 2: Fetch customer by ID and verify in DB', db: true },
-        { title: 'Test 3: Show customer balance', db: false },
-        { title: 'Test 4: Update customer balance and verify updated remaining_amount', db: true },
-        { title: 'Test 5: Update customer external_customer_id and verify in DB', db: true },
-        { title: 'Test 6: Delete existing referral and create referral code for customer', db: true },
-        { title: 'Test 7: Get referral code and match with created one', db: false },
-        { title: 'Test 8: Delete referral code from database for next run', db: true },
-        { title: 'Test 9: Create a new customer and verify in DB', db: true },
-        { title: 'Test 10: Validate a customer address', db: false },
-        { title: 'Test 11: Transfer (merge) two customers and verify in DB', db: true },
-      ]
-    }]
+    id: 'orders', script: 'orders:load', label: 'Orders', vus: 5, duration: '15s',
+    endpoints: [
+      { tag: 'orders.get_list',                label: 'GET /orders (list)',                  p95: 1100, p90: 1000 },
+      { tag: 'orders.get_by_id',               label: 'GET /orders/:id',                     p95: 1100, p90: 1000 },
+      { tag: 'orders.get_payment_update_link', label: 'GET /orders/:id/payment-update-link', p95: 1100, p90: 1000 },
+      { tag: 'orders.get_payment_methods',     label: 'GET /orders/:id/payment-methods',     p95: 1100, p90: 1000 },
+      { tag: 'orders.get_by_filter',           label: 'GET /orders (filter)',                p95: 1100, p90: 1000 },
+      { tag: 'orders.get_by_search',           label: 'GET /orders?search=:id',              p95: 1100, p90: 1000 },
+    ]
   },
   {
-    id: 'invoices', label: 'Invoices', num: '03',
-    files: [{ name: '03-invoices/invoices.cy.js', spec: 'cypress/e2e/customer-api/03-invoices/invoices.cy.js',
-      tests: [
-        { title: 'Test 1: Return a paginated list of invoices', db: false },
-        { title: 'Test 2: Fetch invoice by ID and verify in DB', db: true },
-        { title: 'Test 3: Settle the latest unpaid invoice and verify paid in DB', db: true },
-        { title: 'Test 4: Refund the latest paid invoice and verify in DB', db: true },
-        { title: 'Test 5: Get detailed invoices list', db: false },
-        { title: 'Test 6: Download invoice as PDF and verify in DB', db: true },
-        { title: 'Test 7: Get invoice with items and verify in DB', db: true },
-      ]
-    }]
+    id: 'subscriptions', script: 'subscriptions:load', label: 'Subscriptions', vus: 5, duration: '15s',
+    endpoints: [
+      { tag: 'subscriptions.get_list',      label: 'GET /subscriptions (list)',      p95: 2000, p90: 1900 },
+      { tag: 'subscriptions.get_by_id',     label: 'GET /subscriptions/:id',         p95: 1100, p90: 1000 },
+      { tag: 'subscriptions.get_by_filter', label: 'GET /subscriptions (filter)',    p95: 1500, p90: 1400 },
+      { tag: 'subscriptions.get_by_search', label: 'GET /subscriptions?search=:id', p95: 1100, p90: 1000 },
+    ]
   },
   {
-    id: 'payments', label: 'Payments', num: '04',
-    files: [{ name: '04-payments/payments.cy.js', spec: 'cypress/e2e/customer-api/04-payments/payments.cy.js',
-      tests: [
-        { title: 'Test 1: Issue a one-time payment and verify invoice created in DB', db: true },
-      ]
-    }]
+    id: 'customers', script: 'customers:load', label: 'Customers', vus: 5, duration: '15s',
+    endpoints: [
+      { tag: 'customers.get_list',      label: 'GET /customers (list)',         p95: 1100, p90: 1000 },
+      { tag: 'customers.get_by_id',     label: 'GET /customers/:uid',           p95: 1100, p90: 1000 },
+      { tag: 'customers.get_balance',   label: 'GET /customers/:uid/balance',   p95: 1100, p90: 1000 },
+      { tag: 'customers.get_by_filter', label: 'GET /customers (filter)',       p95: 1100, p90: 1000 },
+      { tag: 'customers.get_by_search', label: 'GET /customers?search=:uid',   p95: 1100, p90: 1000 },
+    ]
   },
   {
-    id: 'subscriptions', label: 'Subscriptions', num: '05',
-    files: [{ name: '05-subscriptions/subscriptions.cy.js', spec: 'cypress/e2e/customer-api/05-subscriptions/subscriptions.cy.js',
-      tests: [
-        { title: 'Test 1: Return a paginated list of subscriptions', db: false },
-        { title: 'Test 2: Fetch subscription by ID and verify in DB', db: true },
-        { title: 'Test 3: Create a subscription (Consumable) and verify in DB', db: true },
-        { title: 'Test 4: Create a subscription (Normal + Bundle) and verify in DB', db: true },
-        { title: 'Test 5: Update real_end_date and verify in DB', db: true },
-        { title: 'Test 6: Add a note to a subscription', db: false },
-        { title: 'Test 7: Update serial_number and verify in DB', db: true },
-        { title: 'Test 8: End subscription in DB and reactivate via API, verify in DB', db: true },
-        { title: 'Test 9: Toggle auto_renew ON and verify in DB', db: true },
-        { title: 'Test 10: Toggle auto_renew OFF and verify in DB', db: true },
-      ]
-    }]
+    id: 'invoices', script: 'invoices:load', label: 'Invoices', vus: 5, duration: '15s',
+    endpoints: [
+      { tag: 'invoices.get_list',      label: 'GET /paginated-invoices (list)',         p95: 1500, p90: 1400 },
+      { tag: 'invoices.get_by_number', label: 'GET /invoices/:invoice_number',          p95: 1900, p90: 1800 },
+      { tag: 'invoices.get_by_filter', label: 'GET /paginated-invoices (filter)',       p95: 1500, p90: 1400 },
+      { tag: 'invoices.get_by_search', label: 'GET /paginated-invoices?search=:number', p95: 1100, p90: 1000 },
+    ]
   },
   {
-    id: 'deliveries', label: 'Deliveries', num: '06',
-    files: [{ name: '06-deliveries/deliveries.cy.js', spec: 'cypress/e2e/customer-api/06-deliveries/deliveries.cy.js',
-      tests: [
-        { title: 'Test 1: Return a list of deliveries', db: false },
-        { title: 'Test 2: Returns all deliveries for a shipping date and verify in DB', db: true },
-      ]
-    }]
+    id: 'transactions', script: 'transactions:load', label: 'Transactions', vus: 5, duration: '15s',
+    endpoints: [
+      { tag: 'transactions.get_list',      label: 'GET /transactions (list)',      p95: 1100, p90: 1000 },
+      { tag: 'transactions.get_by_id',     label: 'GET /transactions/:id',         p95: 1100, p90: 1000 },
+      { tag: 'transactions.get_by_filter', label: 'GET /transactions (filter)',    p95: 1100, p90: 1000 },
+      { tag: 'transactions.get_by_search', label: 'GET /transactions?search=:id', p95: 1100, p90: 1000 },
+    ]
   },
   {
-    id: 'draft-orders', label: 'Draft Orders', num: '07',
-    files: [{ name: '07-draft-orders/draft-orders.cy.js', spec: 'cypress/e2e/customer-api/07-draft-orders/draft-orders.cy.js',
-      tests: [
-        { title: 'Test 1: Create a new draft order with dynamic product data and verify in DB', db: true },
-        { title: 'Test 2: Fetch all draft orders and save the first ID', db: false },
-        { title: 'Test 3: Fetch a specific draft order by ID', db: false },
-        { title: 'Test 4: Delete a specific draft order by ID and verify in DB', db: true },
-      ]
-    }]
+    id: 'draft-orders', script: 'draft-orders:load', label: 'Draft Orders', vus: 5, duration: '15s',
+    endpoints: [
+      { tag: 'draft_orders.get_list',      label: 'GET /draft-orders (list)',        p95: 1100, p90: 1000 },
+      { tag: 'draft_orders.get_by_id',     label: 'GET /draft-orders/:id',           p95: 1100, p90: 1000 },
+      { tag: 'draft_orders.get_by_filter', label: 'GET /draft-orders (filter)',      p95: 1100, p90: 1000 },
+      { tag: 'draft_orders.get_by_search', label: 'GET /draft-orders?search=:name', p95: 1100, p90: 1000 },
+    ]
   },
   {
-    id: 'transactions', label: 'Transactions', num: '08',
-    files: [{ name: '08-transactions/transactions.cy.js', spec: 'cypress/e2e/customer-api/08-transactions/transactions.cy.js',
-      tests: [
-        { title: 'Test 1: Fetch all transactions and log details', db: false },
-        { title: 'Test 2: Fetch single transaction by ID and verify in DB', db: true },
-      ]
-    }]
+    id: 'recurring-payments', script: 'recurring-payments:load', label: 'Recurring Payments', vus: 5, duration: '15s',
+    endpoints: [
+      { tag: 'recurring_payments.get_list',      label: 'GET /recurring-payments (list)',              p95: 1100, p90: 1000 },
+      { tag: 'recurring_payments.get_by_id',     label: 'GET /recurring-payments/:id',                 p95: 1100, p90: 1000 },
+      { tag: 'recurring_payments.get_by_filter', label: 'GET /recurring-payments (filter)',            p95: 1100, p90: 1000 },
+      { tag: 'recurring_payments.get_by_search', label: 'GET /recurring-payments?search=:sub_id',      p95: 1100, p90: 1000 },
+    ]
   },
   {
-    id: 'recurring', label: 'Recurring', num: '09',
-    files: [{ name: '09-recurring-payments/recurring-payments.cy.js', spec: 'cypress/e2e/customer-api/09-recurring-payments/recurring-payments.cy.js',
-      tests: [
-        { title: 'Test 1: Fetch all recurring payments and log details', db: false },
-        { title: 'Test 2: Fetch single recurring payment by ID and verify in DB', db: true },
-      ]
-    }]
+    id: 'products', script: 'products:load', label: 'Products', vus: 5, duration: '15s',
+    endpoints: [
+      { tag: 'products.get_list',         label: 'GET /products (list)',         p95: 1100, p90: 1000 },
+      { tag: 'products.get_variants',     label: 'GET /products/:id/variants',  p95: 1100, p90: 1000 },
+      { tag: 'products.get_all_variants', label: 'GET /products/variants (all)', p95: 1100, p90: 1000 },
+      { tag: 'products.get_by_filter',    label: 'GET /products (filter)',       p95: 1100, p90: 1000 },
+      { tag: 'products.get_by_search',    label: 'GET /products?search=:title', p95: 1100, p90: 1000 },
+    ]
   },
   {
-    id: 'product-tracking', label: 'Product Tracking', num: '10',
-    files: [{ name: '10-product-tracking/product-tracking.cy.js', spec: 'cypress/e2e/customer-api/10-product-tracking/product-tracking.cy.js',
-      tests: [
-        { title: 'Test 1: Fetch all product tracking records and log details', db: false },
-        { title: 'Test 2: Fetch product tracking by serial number and verify in DB', db: true },
-        { title: 'Test 3: Send repair request for product tracking', db: false },
-        { title: 'Test 4: Send stock request for product tracking', db: false },
-      ]
-    }]
+    id: 'retailers', script: 'retailers:load', label: 'Retailers', vus: 5, duration: '15s',
+    endpoints: [
+      { tag: 'retailers.get_list',           label: 'GET /retailers (list)',          p95: 1100, p90: 1000 },
+      { tag: 'retailers.get_by_location_id', label: 'GET /retailers/:location_id',   p95: 1100, p90: 1000 },
+      { tag: 'retailers.get_by_filter',      label: 'GET /retailers (filter)',        p95: 1100, p90: 1000 },
+      { tag: 'retailers.get_by_search',      label: 'GET /retailers?search=:name',   p95: 1100, p90: 1000 },
+    ]
   },
   {
-    id: 'variants', label: 'Variants', num: '11',
-    files: [{ name: '11-product/product-variants.cy.js', spec: 'cypress/e2e/customer-api/11-product/product-variants.cy.js',
-      tests: [
-        { title: 'Test 1: Fetch all products and log details', db: false },
-        { title: 'Test 2: Fetch all variants and validate pagination', db: false },
-        { title: 'Test 3: Fetch variants by product ID and verify in DB', db: true },
-        { title: 'Test 4: Create a new product and verify in DB', db: true },
-        { title: 'Test 5: Create a variant for a product and verify in DB', db: true },
-        { title: 'Test 6: Update a variant stock and verify in DB', db: true },
-        { title: 'Test 7: Fetch variants for latest product from DB and verify via API', db: true },
-      ]
-    }]
-  },
-  {
-    id: 'retailers', label: 'Retailers', num: '12',
-    files: [{ name: '12-retailers/retailers.cy.js', spec: 'cypress/e2e/customer-api/12-retailers/retailers.cy.js',
-      tests: [
-        { title: 'Test 1: Fetch all retailers and log details', db: false },
-        { title: 'Test 2: Fetch retailer by location_id and verify in DB', db: true },
-        { title: 'Test 3: Create a new retailer and verify in DB', db: true },
-        { title: 'Test 4: Update retailer and verify in DB', db: true },
-      ]
-    }]
-  },
-  {
-    id: 'vouchers', label: 'Vouchers', num: '13',
-    files: [{ name: '13-vouchers/vouchers.cy.js', spec: 'cypress/e2e/customer-api/13-vouchers/vouchers.cy.js',
-      tests: [
-        { title: 'Test 1: Fetch all vouchers and log details', db: false },
-        { title: 'Test 2: Fetch voucher by code and verify details', db: false },
-        { title: 'Test 3: Create a new voucher and verify via API', db: false },
-        { title: 'Test 4: Fetch the created voucher by code and verify details', db: false },
-        { title: 'Test 5: Update the created voucher and verify changes', db: false },
-      ]
-    }]
-  },
-  {
-    id: 'css', label: 'CSS', num: '14',
-    files: [{ name: '14-css/css.cy.js', spec: 'cypress/e2e/customer-api/14-css/css.cy.js',
-      tests: [
-        { title: 'Test 1: Fetch subscription deliveries and verify billing_date', db: true },
-        { title: 'Test 2: Report an issue for a subscription', db: true },
-        { title: 'Test 3: Update shipping date for a delivery', db: true },
-        { title: 'Test 4: Change subscription frequency', db: true },
-        { title: 'Test 5: Perform bundle swap for a subscription', db: true },
-        { title: 'Test 6: Cancel a subscription', db: true },
-        { title: 'Test 7: Process buyout for a subscription with stripe payment', db: true },
-        { title: 'Test 8: Create order by customer', db: true },
-      ]
-    }]
-  },
-  {
-    id: 'notes', label: 'Notes', num: '15',
-    files: [{ name: '15-notes/notes.cy.js', spec: 'cypress/e2e/customer-api/15-notes/notes.cy.js',
-      tests: [
-        { title: 'Test 1: Fetch all notes and log details', db: false },
-        { title: 'Test 2: Fetch note by ID and verify details', db: false },
-        { title: 'Test 3: Fetch notes filtered by order_id', db: false },
-        { title: 'Test 4: Fetch notes filtered by customer_id', db: false },
-        { title: 'Test 5: Fetch notes filtered by subscription_id', db: false },
-      ]
-    }]
-  },
-  {
-    id: 'debtist', label: 'Debtist', num: '16',
-    files: [{ name: '16-debtist/debtist.cy.js', spec: 'cypress/e2e/customer-api/16-debtist/debtist.cy.js',
-      tests: [
-        { title: 'Test 1: Fetch claim by ID and verify against DB', db: true },
-        { title: 'Test 2: Fetch claim by invoice ID', db: false },
-        { title: 'Test 3: File a claim for an invoice (with DB setup)', db: true },
-        { title: 'Test 4: Fetch debtist invoices', db: false },
-        { title: 'Test 5: Fetch debtist customers', db: false },
-      ]
-    }]
+    id: 'vouchers', script: 'vouchers:load', label: 'Vouchers', vus: 5, duration: '15s',
+    endpoints: [
+      { tag: 'vouchers.get_list',      label: 'GET /vouchers (list)',              p95: 1100, p90: 1000 },
+      { tag: 'vouchers.get_by_code',   label: 'GET /vouchers/:voucher_code',       p95: 1100, p90: 1000 },
+      { tag: 'vouchers.get_by_filter', label: 'GET /vouchers (filter)',            p95: 1100, p90: 1000 },
+      { tag: 'vouchers.get_by_search', label: 'GET /vouchers?search=:voucher_code', p95: 1100, p90: 1000 },
+    ]
   },
 ];
 
-/* ── STATE ─────────────────────────────────────────────────────────────────── */
-let activeTab = TABS[0].id;
+// ─── State ─────────────────────────────────────────────────────────────────────
+let activeTab     = MODULES[0].id;
 let runningSource = null;
-let totalRunPassed = 0;
-let totalRunFailed = 0;
+let currentScript = null;
 let selectedReports = new Set();
 
-/* ── INIT ──────────────────────────────────────────────────────────────────── */
+// threshold results for current run: { tag: 'pass'|'fail' }
+let thresholdResults = {};
+
+// ─── Init ──────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-  const totalTests = TABS.reduce((s, tab) => s + tab.files.reduce((s2, f) => s2 + f.tests.length, 0), 0);
-  const totalFiles = TABS.reduce((s, tab) => s + tab.files.length, 0);
-  document.getElementById('statTotal').textContent = totalTests;
-  document.getElementById('statFiles').textContent = totalFiles;
-  document.getElementById('statModules').textContent = TABS.length;
-  document.getElementById('footerBar').innerHTML =
-    `unified-customer-api &middot; ${totalFiles} test files &middot; ${totalTests} tests total &middot; API v2026-04`;
   buildTabBar();
   buildTabContents();
-  switchTab(TABS[0].id);
-  updateGlobalStats();
+  switchTab(MODULES[0].id);
 });
 
-/* ── TAB BAR ───────────────────────────────────────────────────────────────── */
+// ─── Tab Bar ───────────────────────────────────────────────────────────────────
 function buildTabBar() {
   const bar = document.getElementById('tabBar');
   let html = '';
-  TABS.forEach(tab => {
-    const count = tab.files.reduce((s, f) => s + f.tests.length, 0);
-    html += `<button class="tab-btn" data-tab="${tab.id}" onclick="switchTab('${tab.id}')">
-      ${tab.label} <span class="tab-badge">${count}</span></button>`;
+  MODULES.forEach(m => {
+    html += `<button class="tab-btn" data-tab="${m.id}" onclick="switchTab('${m.id}')">
+      ${m.label} <span class="tab-badge">${m.endpoints.length}</span></button>`;
   });
   html += `<button class="tab-btn" data-tab="reports" onclick="switchTab('reports')">
-    Reports <span class="tab-badge">...</span></button>`;
+    Reports <span class="tab-badge" id="reportsBadge">0</span></button>`;
   bar.innerHTML = html;
 }
 
@@ -474,357 +368,280 @@ function switchTab(tabId) {
   if (tabId === 'reports') loadReports();
 }
 
-/* ── BUILD TAB CONTENTS ────────────────────────────────────────────────────── */
+// ─── Build Content ─────────────────────────────────────────────────────────────
 function buildTabContents() {
   const panel = document.getElementById('leftPanel');
   let html = '';
-  TABS.forEach(tab => {
-    html += `<div class="tab-content" id="tab-${tab.id}">`;
-    tab.files.forEach((file, fi) => {
-      const accId = `${tab.id}-f${fi}`;
-      html += `<div class="accordion open" id="acc-${accId}">
-        <div class="accordion-header" onclick="toggleAccordion('${accId}')">
-          <span class="accordion-chevron">&#9654;</span>
-          <span class="accordion-title">${file.name}</span>
-          <span class="accordion-counters" id="counters-${accId}">
-            <span class="c-pass">0/${file.tests.length} passed</span>
-          </span>
-          <button class="btn-run" onclick="event.stopPropagation();runSpec('${file.spec}','${accId}',this,'headed')" id="runbtn-headed-${accId}">Headed</button>
-          <button class="btn-run" onclick="event.stopPropagation();runSpec('${file.spec}','${accId}',this,'headless')" id="runbtn-headless-${accId}" style="color:#6c7bf0;border-color:#4a4f80;">Headless</button>
+
+  MODULES.forEach(m => {
+    html += `<div class="tab-content" id="tab-${m.id}">
+      <div class="module-card open" id="card-${m.id}">
+        <div class="module-card-header" onclick="toggleCard('${m.id}')">
+          <span class="chevron">&#9654;</span>
+          <span class="module-title">${m.label}</span>
+          <span class="module-meta">${m.endpoints.length} endpoints &middot; ${m.vus} VUs &middot; ${m.duration}</span>
+          <span class="module-status notrun" id="status-${m.id}">Not Run</span>
+          <button class="btn-run" onclick="event.stopPropagation();runModule('${m.script}',this)" id="runbtn-${m.id}">▶ Run</button>
         </div>
-        <div class="accordion-body">
-          <table class="test-table">
+        <div class="module-body">
+          <table class="ep-table">
             <thead><tr>
-              <th class="col-num">#</th>
-              <th>Test Case</th>
-              <th class="col-db">DB Verified</th>
-              <th class="col-status">Status</th>
+              <th>#</th>
+              <th>Endpoint</th>
+              <th>Tag</th>
+              <th>p95 limit</th>
+              <th>p90 limit</th>
+              <th>Result</th>
             </tr></thead>
             <tbody>`;
-      file.tests.forEach((test, ti) => {
-        const statusKey = `status:${tab.id}-f${fi}-t${ti}`;
-        const saved = localStorage.getItem(statusKey) || 'notrun';
-        html += `<tr>
-          <td class="col-num">${ti + 1}</td>
-          <td>${escapeHtml(test.title)}</td>
-          <td class="col-db"><span class="db-badge ${test.db ? 'db-yes' : 'db-no'}">${test.db ? 'Yes' : 'No'}</span></td>
-          <td class="col-status">
-            <span class="badge badge-${saved}" data-key="${statusKey}" data-acc="${accId}" onclick="cycleStatus(this)">${statusLabel(saved)}</span>
-          </td>
-        </tr>`;
-      });
-      html += `</tbody></table></div></div>`;
+    m.endpoints.forEach((ep, i) => {
+      html += `<tr>
+        <td style="color:#8890b5;text-align:center;width:32px;">${i + 1}</td>
+        <td>${escHtml(ep.label)}</td>
+        <td><span class="ep-tag">${escHtml(ep.tag)}</span></td>
+        <td><span class="ep-limit" style="color:#a5b4fc;">${ep.p95}ms</span></td>
+        <td><span class="ep-limit" style="color:#8890b5;">${ep.p90}ms</span></td>
+        <td><span class="ep-result notrun" id="epresult-${escId(ep.tag)}">—</span></td>
+      </tr>`;
     });
-    html += `</div>`;
+    html += `</tbody></table></div></div></div>`;
   });
 
+  // Reports tab
   html += `<div class="tab-content" id="tab-reports">
     <div style="display:flex;gap:10px;margin-bottom:16px;align-items:center;">
       <button class="btn btn-secondary" onclick="loadReports()">⟳ Refresh</button>
-      <button class="btn btn-primary" onclick="downloadSelectedReports()">⬇ Download PDF</button>
       <button class="btn btn-danger" onclick="deleteSelectedReports()">✕ Delete Selected</button>
     </div>
-    <div class="reports-grid" id="reportsGrid">Loading reports...</div>
+    <div class="reports-grid" id="reportsGrid"><span style="color:#8890b5;">No reports yet.</span></div>
   </div>`;
 
   panel.innerHTML = html;
-  TABS.forEach(tab => tab.files.forEach((_, fi) => updateAccordionCounters(`${tab.id}-f${fi}`)));
 }
 
-/* ── ACCORDION ─────────────────────────────────────────────────────────────── */
-function toggleAccordion(accId) {
-  const el = document.getElementById('acc-' + accId);
-  if (el) el.classList.toggle('open');
+function toggleCard(id) {
+  document.getElementById('card-' + id).classList.toggle('open');
 }
 
-/* ── STATUS BADGES ─────────────────────────────────────────────────────────── */
-function statusLabel(s) {
-  return { notrun: 'Not Run', pass: 'Pass', fail: 'Fail', blocked: 'Blocked', skip: 'Skip' }[s] || 'Not Run';
+function escId(s) { return s.replace(/[^a-zA-Z0-9_]/g, '_'); }
+function escHtml(s) {
+  return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-function cycleStatus(el) {
-  const key = el.dataset.key;
-  const accId = el.dataset.acc;
-  let idx = STATUS_CYCLE.indexOf(localStorage.getItem(key) || 'notrun');
-  const next = STATUS_CYCLE[(idx + 1) % STATUS_CYCLE.length];
-  localStorage.setItem(key, next);
-  el.className = 'badge badge-' + next;
-  el.textContent = statusLabel(next);
-  updateAccordionCounters(accId);
-  updateGlobalStats();
+// ─── Run ───────────────────────────────────────────────────────────────────────
+function runModule(script, btn) {
+  if (runningSource) { showToast('A test is already running', 'error'); return; }
+
+  const mod = MODULES.find(m => m.script === script || m.id === script);
+  if (!mod) { showToast('Unknown module: ' + script, 'error'); return; }
+
+  thresholdResults = {};
+  clearLog();
+  resetEndpointResults(mod);
+  setModuleStatus(mod.id, 'running');
+
+  currentScript = mod.script;
+  document.getElementById('btnStop').style.display = 'inline-flex';
+  document.getElementById('btnRunAll').disabled = true;
+  if (btn) { btn.classList.add('running'); btn.textContent = '⏳ Running…'; btn.disabled = true; }
+
+  document.getElementById('progressBar').classList.add('visible');
+  document.getElementById('progressFill').style.width = '0%';
+  document.getElementById('logTitle').textContent = `Live k6 Output — ${mod.label}`;
+
+  appendLog(`=== ${mod.label} Load Test ===`, 'log-bold');
+  appendLog(`Script : npm run ${mod.script}`, 'log-info');
+  appendLog(`VUs    : ${mod.vus}   Duration: ${mod.duration}`, 'log-info');
+  appendLog(`Endpoints: ${mod.endpoints.length}`, 'log-info');
+  appendLog('', '');
+
+  const es = new EventSource(`${SERVER}/run?script=${encodeURIComponent(mod.script)}`);
+  runningSource = es;
+
+  es.onmessage = (evt) => {
+    try {
+      const data = JSON.parse(evt.data);
+      handleEvent(data, mod, btn);
+    } catch(e) {
+      appendLog(evt.data, '');
+    }
+  };
+
+  es.onerror = () => {
+    es.close(); runningSource = null;
+    appendLog('\nConnection lost or server error.', 'log-fail');
+    finishRun(mod, btn, false);
+  };
 }
 
-function setTestStatus(tabId, fi, ti, status) {
-  const key = `status:${tabId}-f${fi}-t${ti}`;
-  const accId = `${tabId}-f${fi}`;
-  localStorage.setItem(key, status);
-  const el = document.querySelector(`[data-key="${key}"]`);
-  if (el) { el.className = 'badge badge-' + status; el.textContent = statusLabel(status); }
-  updateAccordionCounters(accId);
+function handleEvent(data, mod, btn) {
+  if (data.status === 'log') {
+    const line = data.text || '';
+    renderLogLine(line);
+    parseThresholdLine(line, mod);
+    updateProgress(line);
+  }
+
+  if (data.status === 'done') {
+    runningSource.close(); runningSource = null;
+    const ok = data.ok !== false;
+    appendLog('', '');
+    appendLog(`=== Run Complete — ${ok ? 'PASSED ✓' : 'FAILED ✗'} ===`, ok ? 'log-pass' : 'log-fail');
+    appendLog(`Exit code: ${data.exitCode}`, '');
+    finishRun(mod, btn, ok);
+    loadReports();
+  }
 }
 
-/* ── COUNTERS ──────────────────────────────────────────────────────────────── */
-function updateAccordionCounters(accId) {
-  const el = document.getElementById('counters-' + accId);
+function renderLogLine(line) {
+  const l = line.trimEnd();
+  if (!l) { appendLog('', ''); return; }
+  // Color k6 threshold lines
+  if (/^\s+✓/.test(l)) { appendLog(l, 'log-pass'); return; }
+  if (/^\s+✗/.test(l)) { appendLog(l, 'log-fail'); return; }
+  if (/ERRO|error/i.test(l)) { appendLog(l, 'log-fail'); return; }
+  if (/WARN/i.test(l))  { appendLog(l, 'log-warn'); return; }
+  if (/INFO|setup|teardown/i.test(l)) { appendLog(l, 'log-info'); return; }
+  if (/http_req_duration|http_req_failed|checks|http_reqs/.test(l)) { appendLog(l, 'log-metric'); return; }
+  appendLog(l, '');
+}
+
+function parseThresholdLine(line, mod) {
+  // Match lines like: "    ✓ { ep:orders.get_list }.....: 100.00% ..."
+  const m = line.match(/\s+([✓✗])\s+\{\s*ep:([^\}]+)\s*\}/);
+  if (!m) return;
+  const passed = m[1] === '✓';
+  const tag    = m[2].trim();
+  thresholdResults[tag] = passed ? 'pass' : 'fail';
+  const el = document.getElementById('epresult-' + escId(tag));
+  if (el) {
+    el.className = 'ep-result ' + (passed ? 'pass' : 'fail');
+    el.textContent = passed ? '✓ Pass' : '✗ Fail';
+  }
+  // Update stats
+  const allTags = Object.keys(thresholdResults);
+  const passed2 = allTags.filter(t => thresholdResults[t] === 'pass').length;
+  const failed2 = allTags.filter(t => thresholdResults[t] === 'fail').length;
+  document.getElementById('statPassed').textContent = passed2;
+  document.getElementById('statFailed').textContent = failed2;
+}
+
+function updateProgress(line) {
+  // k6 prints progress like "running (5s), 3/5 VUs, 2 complete..."
+  const m = line.match(/running \((\d+)(\w+)\)/);
+  if (!m) return;
+  // Rough progress based on log lines received (just animate the bar)
+  const fill = document.getElementById('progressFill');
+  const cur = parseFloat(fill.style.width) || 0;
+  if (cur < 90) fill.style.width = Math.min(90, cur + 2) + '%';
+}
+
+function finishRun(mod, btn, ok) {
+  document.getElementById('btnStop').style.display = 'none';
+  document.getElementById('btnRunAll').disabled = false;
+  document.getElementById('progressFill').style.width = '100%';
+  setTimeout(() => document.getElementById('progressBar').classList.remove('visible'), 1000);
+
+  setModuleStatus(mod.id, ok ? 'passed' : 'failed');
+
+  if (btn) {
+    btn.classList.remove('running');
+    btn.classList.add(ok ? 'done-ok' : 'done-fail');
+    btn.textContent = ok ? '✓ Passed' : '✗ Failed';
+    btn.disabled = false;
+    setTimeout(() => {
+      btn.classList.remove('done-ok', 'done-fail');
+      btn.textContent = '▶ Run';
+    }, 6000);
+  }
+  showToast(`${mod.label}: ${ok ? 'PASSED' : 'FAILED'}`, ok ? 'success' : 'error');
+}
+
+function setModuleStatus(modId, state) {
+  const el = document.getElementById('status-' + modId);
   if (!el) return;
-  const badges = document.querySelectorAll(`#acc-${accId} .badge`);
-  let passed = 0, failed = 0;
-  badges.forEach(b => {
-    const s = localStorage.getItem(b.dataset.key) || 'notrun';
-    if (s === 'pass') passed++;
-    if (s === 'fail') failed++;
+  const labels = { notrun: 'Not Run', running: 'Running…', passed: '✓ Passed', failed: '✗ Failed' };
+  el.className = 'module-status ' + state;
+  el.textContent = labels[state] || state;
+}
+
+function resetEndpointResults(mod) {
+  mod.endpoints.forEach(ep => {
+    const el = document.getElementById('epresult-' + escId(ep.tag));
+    if (el) { el.className = 'ep-result notrun'; el.textContent = '—'; }
   });
-  el.innerHTML = `<span class="c-pass">${passed}/${badges.length} passed</span>` +
-    (failed > 0 ? ` <span class="c-fail">&middot; ${failed} failed</span>` : '');
+  document.getElementById('statPassed').textContent = '—';
+  document.getElementById('statFailed').textContent = '—';
 }
 
-function updateGlobalStats() {
-  let passed = 0, failed = 0;
-  TABS.forEach(tab => tab.files.forEach((file, fi) =>
-    file.tests.forEach((_, ti) => {
-      const s = localStorage.getItem(`status:${tab.id}-f${fi}-t${ti}`) || 'notrun';
-      if (s === 'pass') passed++;
-      if (s === 'fail') failed++;
-    })
-  ));
-  document.getElementById('statPassed').textContent = passed;
-  document.getElementById('statFailed').textContent = failed;
+// ─── Stop ──────────────────────────────────────────────────────────────────────
+function stopRun() {
+  if (runningSource) { runningSource.close(); runningSource = null; }
+  fetch(SERVER + '/stop', { method: 'POST' }).catch(() => {});
+  appendLog('\n=== Stopped by User ===', 'log-warn');
+  document.getElementById('btnStop').style.display = 'none';
+  document.getElementById('btnRunAll').disabled = false;
+  document.getElementById('progressBar').classList.remove('visible');
+  if (currentScript) {
+    const mod = MODULES.find(m => m.script === currentScript);
+    if (mod) setModuleStatus(mod.id, 'notrun');
+    const btn = document.getElementById('runbtn-' + (mod ? mod.id : ''));
+    if (btn) { btn.classList.remove('running'); btn.textContent = '▶ Run'; btn.disabled = false; }
+  }
+  showToast('Test stopped', 'error');
 }
 
-/* ── LOG PANEL ─────────────────────────────────────────────────────────────── */
-function appendLog(msg, cls) {
+// ─── Log Panel ─────────────────────────────────────────────────────────────────
+function appendLog(text, cls) {
   const body = document.getElementById('logBody');
+  if (body.textContent === 'Waiting for test run…\n\nStart the server first:\n  node cypress/docs/sync-server.js\n\nThen click ▶ Run next to any module.') {
+    body.innerHTML = '';
+  }
   const span = document.createElement('span');
   if (cls) span.className = cls;
-  span.textContent = msg + '\n';
+  span.textContent = text + '\n';
   body.appendChild(span);
   body.scrollTop = body.scrollHeight;
 }
 
 function clearLog() {
   document.getElementById('logBody').innerHTML = '';
-  document.getElementById('errorSummary').classList.remove('visible');
-  document.getElementById('progressBarContainer').classList.remove('visible');
+  document.getElementById('logTitle').textContent = 'Live k6 Output';
 }
 
-function setProgress(pct) {
-  document.getElementById('progressBarContainer').classList.add('visible');
-  document.getElementById('progressBar').style.width = Math.min(100, pct) + '%';
-}
-
-/* ── TOAST ─────────────────────────────────────────────────────────────────── */
-function showToast(msg, type) {
-  const t = document.createElement('div');
-  t.className = 'toast toast-' + (type || 'info');
-  t.textContent = msg;
-  document.getElementById('toastContainer').appendChild(t);
-  setTimeout(() => t.remove(), 3000);
-}
-
-/* ── SYNC ──────────────────────────────────────────────────────────────────── */
-function doSync() {
-  fetch(SERVER + '/sync').then(r => r.json())
-    .then(() => showToast('Sync completed successfully', 'success'))
-    .catch(err => showToast('Sync failed: ' + err.message, 'error'));
-}
-
-/* ── STOP ──────────────────────────────────────────────────────────────────── */
-function stopTests() {
-  if (runningSource) { runningSource.close(); runningSource = null; }
-  fetch(SERVER + '/stop', { method: 'POST' }).catch(() => {});
-  appendLog('=== Tests Stopped by User ===', 'log-fail');
-  document.getElementById('stopBtn').style.display = 'none';
-  ['runAllHeadedBtn','runAllHeadlessBtn'].forEach(id => {
-    const b = document.getElementById(id);
-    if (b) { b.textContent = id.includes('Headless') ? 'Run All Headless' : 'Run All Headed'; b.disabled = false; }
-  });
-  document.querySelectorAll('.btn-run.running').forEach(btn => {
-    btn.classList.remove('running');
-    btn.textContent = btn.dataset.label || 'Headed';
-  });
-  setProgress(0);
-  showToast('Tests stopped', 'error');
-}
-
-/* ── RESET STATS ───────────────────────────────────────────────────────────── */
-function resetStats() {
-  totalRunPassed = 0; totalRunFailed = 0;
-  document.getElementById('statPassed').textContent = '0';
-  document.getElementById('statFailed').textContent = '0';
-  TABS.forEach(tab => tab.files.forEach((file, fi) => {
-    file.tests.forEach((_, ti) => {
-      const key = `status:${tab.id}-f${fi}-t${ti}`;
-      localStorage.removeItem(key);
-      const el = document.querySelector(`[data-key="${key}"]`);
-      if (el) { el.className = 'badge badge-notrun'; el.textContent = 'NOT RUN'; }
-    });
-    updateAccordionCounters(`${tab.id}-f${fi}`);
-  }));
-}
-
-/* ── RUN ALL ───────────────────────────────────────────────────────────────── */
-function runAll(mode) {
-  mode = mode || 'headed';
-  if (runningSource) { showToast('A test run is already in progress', 'error'); return; }
-  const btn = document.getElementById(mode === 'headless' ? 'runAllHeadlessBtn' : 'runAllHeadedBtn');
-  const otherBtn = document.getElementById(mode === 'headless' ? 'runAllHeadedBtn' : 'runAllHeadlessBtn');
-  clearLog(); resetStats();
-  btn.textContent = 'Running...'; btn.disabled = true;
-  if (otherBtn) otherBtn.disabled = true;
-  appendLog(`=== Run All Tests (${mode}) ===`, 'log-bold');
-  appendLog('Spec: cypress/e2e/customer-api/**/*.cy.js', 'log-info');
-  appendLog('', '');
-  runWithEventSource('cypress/e2e/customer-api/**/*.cy.js', null, null, btn, mode);
-}
-
-/* ── RUN SPEC ──────────────────────────────────────────────────────────────── */
-function runSpec(spec, accId, btn, mode) {
-  mode = mode || 'headed';
-  if (runningSource) { showToast('A test run is already in progress', 'error'); return; }
-  clearLog(); resetStats();
-  btn.dataset.label = btn.textContent;
-  btn.classList.add('running'); btn.textContent = 'Running...';
-  appendLog(`=== Run Spec (${mode}) ===`, 'log-bold');
-  appendLog('Spec: ' + spec, 'log-info');
-  appendLog('', '');
-  runWithEventSource(spec, accId, btn, null, mode);
-}
-
-/* ── EVENT SOURCE ──────────────────────────────────────────────────────────── */
-function runWithEventSource(spec, accId, fileBtn, globalBtn, mode) {
-  const es = new EventSource(SERVER + '/run?spec=' + encodeURIComponent(spec) + '&mode=' + (mode || 'headed'));
-  runningSource = es;
-  document.getElementById('stopBtn').style.display = 'inline-flex';
-  let specCount = 0;
-  const totalSpecs = accId ? 1 : TABS.length;
-
-  es.onmessage = function(event) {
-    try {
-      const data = JSON.parse(event.data);
-      if (data.status === 'log') appendLog(data.text || data.message || '', '');
-      if (data.status === 'file-start') appendLog('--- ' + (data.file || '') + ' ---', 'log-info');
-      if (data.status === 'spec-done') {
-        specCount++;
-        const sp = data.specPasses || 0, sf = data.specFailures || 0;
-        totalRunPassed += sp; totalRunFailed += sf;
-        appendLog(`  Passed: ${sp}  Failed: ${sf}  Total: ${data.specTotal || (sp+sf)}`, sf > 0 ? 'log-fail' : 'log-pass');
-        setProgress((specCount / totalSpecs) * 100);
-        document.getElementById('statPassed').textContent = totalRunPassed;
-        document.getElementById('statFailed').textContent = totalRunFailed;
-      }
-      if (data.status === 'done') {
-        es.close(); runningSource = null;
-        document.getElementById('stopBtn').style.display = 'none';
-        setProgress(100);
-        const report = data.report || {};
-        const passes = report.passes || [], failures = report.failures || [];
-        appendLog('', '');
-        appendLog('=== Run Complete ===', 'log-bold');
-        appendLog(`Result: ${data.ok ? 'PASSED' : 'FAILED'}`, data.ok ? 'log-pass' : 'log-fail');
-        appendLog(`Total Passed: ${passes.length}  Failed: ${failures.length}`, '');
-        applyReportToRows(passes, failures);
-        if (failures.length > 0) showErrorSummary(failures);
-        if (fileBtn) {
-          fileBtn.classList.remove('running');
-          fileBtn.classList.add(data.ok ? 'done-ok' : 'done-fail');
-          fileBtn.textContent = data.ok ? 'Passed' : 'Failed';
-          setTimeout(() => { fileBtn.classList.remove('done-ok','done-fail'); fileBtn.textContent = fileBtn.dataset.label || 'Headed'; }, 5000);
-        }
-        if (globalBtn) {
-          const origText = globalBtn.id === 'runAllHeadlessBtn' ? 'Run All Headless' : 'Run All Headed';
-          globalBtn.textContent = data.ok ? 'All Passed' : 'Some Failed';
-          globalBtn.disabled = false;
-          const otherId = globalBtn.id === 'runAllHeadlessBtn' ? 'runAllHeadedBtn' : 'runAllHeadlessBtn';
-          const ob = document.getElementById(otherId);
-          if (ob) ob.disabled = false;
-          setTimeout(() => { globalBtn.textContent = origText; }, 5000);
-        }
-        updateGlobalStats();
-      }
-    } catch(e) { appendLog(event.data, ''); }
-  };
-
-  es.onerror = function() {
-    es.close(); runningSource = null;
-    document.getElementById('stopBtn').style.display = 'none';
-    appendLog('Connection lost or error occurred.', 'log-fail');
-    if (fileBtn) {
-      fileBtn.classList.remove('running'); fileBtn.classList.add('done-fail'); fileBtn.textContent = 'Error';
-      setTimeout(() => { fileBtn.classList.remove('done-fail'); fileBtn.textContent = fileBtn.dataset.label || 'Headed'; }, 5000);
-    }
-    if (globalBtn) {
-      const origText = globalBtn.id === 'runAllHeadlessBtn' ? 'Run All Headless' : 'Run All Headed';
-      globalBtn.textContent = origText; globalBtn.disabled = false;
-      const ob = document.getElementById(globalBtn.id === 'runAllHeadlessBtn' ? 'runAllHeadedBtn' : 'runAllHeadlessBtn');
-      if (ob) ob.disabled = false;
-    }
-  };
-}
-
-/* ── APPLY REPORT TO ROWS ──────────────────────────────────────────────────── */
-function extractTestCore(title) {
-  const m = (title || '').match(/Test\s+\d+:\s*(.*)/i);
-  return (m ? m[1] : title).trim().toLowerCase();
-}
-
-function applyReportToRows(passes, failures) {
-  const passItems = passes.map(p => ({ core: extractTestCore(p.title) }));
-  const failItems = failures.map(f => ({ core: extractTestCore(f.title) }));
-  TABS.forEach(tab => tab.files.forEach((file, fi) => file.tests.forEach((test, ti) => {
-    const tabCore = extractTestCore(test.title);
-    const isPass = passItems.some(p => p.core === tabCore || p.core.includes(tabCore) || tabCore.includes(p.core));
-    const isFail = failItems.some(f => f.core === tabCore || f.core.includes(tabCore) || tabCore.includes(f.core));
-    if (isPass) setTestStatus(tab.id, fi, ti, 'pass');
-    else if (isFail) setTestStatus(tab.id, fi, ti, 'fail');
-  })));
-  updateGlobalStats();
-}
-
-/* ── ERROR SUMMARY ─────────────────────────────────────────────────────────── */
-function showErrorSummary(failures) {
-  const list = document.getElementById('errorList');
-  list.innerHTML = '';
-  failures.forEach(f => {
-    const li = document.createElement('li');
-    li.innerHTML = `<div class="err-title">${escapeHtml(f.title)}</div>` +
-      (f.err && f.err.message ? `<div class="err-msg">${escapeHtml(f.err.message)}</div>` : '');
-    list.appendChild(li);
-  });
-  document.getElementById('errorSummary').classList.add('visible');
-}
-
-/* ── REPORTS ───────────────────────────────────────────────────────────────── */
+// ─── Reports ───────────────────────────────────────────────────────────────────
 function loadReports() {
   const grid = document.getElementById('reportsGrid');
-  grid.innerHTML = '<span style="color:#8890b5;">Loading reports...</span>';
+  grid.innerHTML = '<span style="color:#8890b5;">Loading…</span>';
   selectedReports.clear();
   fetch(SERVER + '/reports').then(r => r.json()).then(data => {
     const reports = data.reports || [];
-    if (!reports.length) { grid.innerHTML = '<span style="color:#8890b5;">No reports found.</span>'; return; }
+    document.getElementById('reportsBadge').textContent = reports.length;
+    if (!reports.length) { grid.innerHTML = '<span style="color:#8890b5;">No reports yet.</span>'; return; }
     grid.innerHTML = '';
     reports.forEach((rpt, i) => {
       const card = document.createElement('div');
       card.className = 'report-card';
       card.dataset.file = rpt.file || '';
-      const safeFile = (rpt.file || '').replace(/'/g, "\\'");
+      const sf = (rpt.file || '').replace(/'/g, "\\'");
+      const ok = rpt.ok !== false;
       card.innerHTML = `
-        <div class="rc-check" onclick="event.stopPropagation();toggleReportSelect(this.parentElement)"></div>
-        <div class="rc-title">${escapeHtml(rpt.file || 'Report ' + (i+1))}</div>
-        <div class="rc-time">${escapeHtml(rpt.time || '')}</div>
+        <div class="rc-check" onclick="event.stopPropagation();toggleSelect(this.parentElement)"></div>
+        <div class="rc-title">${escHtml(rpt.label || rpt.file || 'Run ' + (i+1))}</div>
+        <div class="rc-time">${escHtml(rpt.time || '')}</div>
         <div class="rc-stats">
-          <span class="rc-pass">${rpt.passes || 0} passed</span>
-          <span class="rc-fail">${rpt.failures || 0} failed</span>
-        </div>
-        <div style="display:flex;gap:8px;margin-top:10px;">
-          <button class="btn-run" onclick="event.stopPropagation();openReportDetail('${safeFile}')">View Report</button>
-          <button class="btn-run" onclick="event.stopPropagation();downloadReportAsPDF('${safeFile}')" style="color:#6c7bf0;border-color:#4a4f80;">PDF</button>
+          <span style="color:${ok ? '#4ade80' : '#f87171'};font-weight:700;">${ok ? '✓ PASSED' : '✗ FAILED'}</span>
+          <span class="rc-pass">${rpt.thresholdsPassed || 0} thresholds passed</span>
+          <span class="rc-fail">${rpt.thresholdsFailed || 0} failed</span>
         </div>`;
       grid.appendChild(card);
     });
-  }).catch(err => { grid.innerHTML = `<span style="color:#f87171;">Error: ${escapeHtml(err.message)}</span>`; });
+  }).catch(err => {
+    grid.innerHTML = `<span style="color:#f87171;">Error: ${escHtml(err.message)}</span>`;
+  });
 }
 
-function toggleReportSelect(card) {
+function toggleSelect(card) {
   const file = card.dataset.file;
   if (selectedReports.has(file)) { selectedReports.delete(file); card.classList.remove('selected'); }
   else { selectedReports.add(file); card.classList.add('selected'); }
@@ -834,136 +651,39 @@ function deleteSelectedReports() {
   if (!selectedReports.size) { showToast('No reports selected', 'error'); return; }
   const files = Array.from(selectedReports);
   fetch(SERVER + '/reports/delete', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ files }) })
-    .then(r => r.json()).then(() => { showToast(`Deleted ${files.length} report(s)`, 'success'); loadReports(); })
+    .then(r => r.json())
+    .then(() => { showToast(`Deleted ${files.length} report(s)`, 'success'); loadReports(); })
     .catch(err => showToast('Delete failed: ' + err.message, 'error'));
 }
 
-function downloadSelectedReports() {
-  if (!selectedReports.size) {
-    fetch(SERVER + '/reports').then(r => r.json()).then(data => {
-      (data.reports || []).forEach(r => downloadReportAsPDF(r.file || ''));
-    }).catch(err => showToast('Error: ' + err.message, 'error'));
-    return;
-  }
-  Array.from(selectedReports).forEach(f => downloadReportAsPDF(f));
+// ─── Toast ─────────────────────────────────────────────────────────────────────
+function showToast(msg, type) {
+  const t = document.createElement('div');
+  t.className = 'toast toast-' + (type || 'info');
+  t.textContent = msg;
+  document.getElementById('toastContainer').appendChild(t);
+  setTimeout(() => t.remove(), 3000);
 }
 
-function downloadReportAsPDF(file) {
-  if (!window.jspdf) { showToast('PDF library loading... try again in a moment', 'error'); return; }
-  fetch(SERVER + '/reports/get?file=' + encodeURIComponent(file)).then(r => r.json()).then(data => {
-    const detail = data.detail || {};
-    const passes = Array.isArray(detail.passes) ? detail.passes : (Array.isArray(data.passes) ? data.passes : []);
-    const failures = Array.isArray(detail.failures) ? detail.failures : (Array.isArray(data.failures) ? data.failures : []);
-    const passCount = passes.length || (typeof data.passes === 'number' ? data.passes : 0);
-    const failCount = failures.length || (typeof data.failures === 'number' ? data.failures : 0);
-    const title = data.label || file;
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    const W = doc.internal.pageSize.getWidth();
-    let y = 20;
-    const checkPage = (need) => { if (y + need > 275) { doc.addPage(); y = 20; } };
-    doc.setFillColor(34, 37, 64); doc.rect(0, 0, W, 38, 'F');
-    doc.setFontSize(18); doc.setTextColor(232, 236, 255); doc.text('E2E Test Report', 14, 16);
-    doc.setFontSize(9); doc.setTextColor(136, 144, 181); doc.text(title, 14, 24);
-    doc.text('Generated: ' + (data.time || new Date().toLocaleString()), 14, 30);
-    y = 48;
-    const boxW = 40, boxH = 20, gap = 8;
-    [[passCount + failCount, 'TOTAL', [44,48,80], [108,123,240]], [passCount, 'PASSED', [26,58,42], [74,222,128]], [failCount, 'FAILED', [58,26,26], [248,113,113]]].forEach(([n, lbl, bg, fg], i) => {
-      doc.setFillColor(...bg); doc.roundedRect(14 + i*(boxW+gap), y, boxW, boxH, 3, 3, 'F');
-      doc.setFontSize(16); doc.setTextColor(...fg); doc.text('' + n, 14 + i*(boxW+gap) + boxW/2, y+10, { align:'center' });
-      doc.setFontSize(7); doc.setTextColor(136,144,181); doc.text(lbl, 14 + i*(boxW+gap) + boxW/2, y+16, { align:'center' });
-    });
-    y = 78;
-    const fileGroups = {};
-    passes.forEach(p => { const fn = (p.file||'').replace(/\\/g,'/').split('/').pop() || 'Unknown'; if (!fileGroups[fn]) fileGroups[fn]={pass:[],fail:[]}; fileGroups[fn].pass.push(p.title||''); });
-    failures.forEach(f => { const fn = (f.file||'').replace(/\\/g,'/').split('/').pop() || 'Unknown'; if (!fileGroups[fn]) fileGroups[fn]={pass:[],fail:[]}; fileGroups[fn].fail.push(f); });
-    Object.keys(fileGroups).sort().forEach(fname => {
-      const g = fileGroups[fname];
-      checkPage(14);
-      doc.setFillColor(30,32,64); doc.roundedRect(14, y-4, W-28, 10, 2, 2, 'F');
-      doc.setFontSize(9); doc.setTextColor(212,216,240); doc.text(fname, 18, y+1);
-      doc.setFontSize(7); doc.setTextColor(74,222,128); doc.text(g.pass.length + ' passed', W-60, y+1);
-      if (g.fail.length) { doc.setTextColor(248,113,113); doc.text(g.fail.length + ' failed', W-32, y+1); }
-      y += 10;
-      g.pass.forEach(t => { checkPage(7); doc.setFillColor(26,58,42); doc.roundedRect(18,y-3,W-36,6,1,1,'F'); doc.setFontSize(7); doc.setTextColor(74,222,128); doc.text('PASS',21,y+0.5); doc.setFontSize(8); doc.setTextColor(212,216,240); doc.text(doc.splitTextToSize(t,W-60)[0],36,y+0.5); y+=7; });
-      g.fail.forEach(f => { checkPage(12); const fLines=doc.splitTextToSize(f.title||'',W-60); const errMsg=f.err&&f.err.message?f.err.message:''; const errLines=errMsg?doc.splitTextToSize('Error: '+errMsg,W-62):[]; const bh=fLines.length*5+errLines.length*4+3; doc.setFillColor(58,26,26); doc.roundedRect(18,y-3,W-36,bh,1,1,'F'); doc.setFontSize(7); doc.setTextColor(248,113,113); doc.text('FAIL',21,y+0.5); doc.setFontSize(8); doc.setTextColor(212,216,240); doc.text(fLines[0],36,y+0.5); if(errLines.length){doc.setFontSize(6.5);doc.setTextColor(248,160,160);doc.text(errLines,36,y+fLines.length*5);} y+=bh+2; });
-      y += 4;
-    });
-    checkPage(12); y+=6;
-    doc.setDrawColor(53,56,96); doc.setLineWidth(0.2); doc.line(14,y,W-14,y); y+=6;
-    doc.setFontSize(7); doc.setTextColor(136,144,181);
-    doc.text('unified-customer-api E2E Test Dashboard  |  Auto-generated report', W/2, y, { align:'center' });
-    doc.save(title.replace(/[^a-zA-Z0-9_\-\.]/g,'_') + '.pdf');
-    showToast('PDF downloaded: ' + title, 'success');
-  }).catch(err => showToast('PDF failed: ' + err.message, 'error'));
-}
-
-function openReportDetail(file) {
-  const overlay = document.getElementById('reportDetailOverlay');
-  const modal = document.getElementById('reportDetailModal');
-  modal.innerHTML = '<span style="color:#8890b5;">Loading...</span>';
-  overlay.classList.add('visible');
-  fetch(SERVER + '/reports/get?file=' + encodeURIComponent(file)).then(r => r.json()).then(data => {
-    const detail = data.detail || {};
-    const passes = Array.isArray(detail.passes) ? detail.passes : [];
-    const failures = Array.isArray(detail.failures) ? detail.failures : [];
-    const passCount = passes.length || (typeof data.passes === 'number' ? data.passes : 0);
-    const failCount = failures.length || (typeof data.failures === 'number' ? data.failures : 0);
-    const fileGroups = {};
-    passes.forEach(p => { const fn=(p.file||'').replace(/\\/g,'/').split('/').pop()||'Unknown'; if(!fileGroups[fn])fileGroups[fn]={pass:[],fail:[]}; fileGroups[fn].pass.push(p.title||''); });
-    failures.forEach(f => { const fn=(f.file||'').replace(/\\/g,'/').split('/').pop()||'Unknown'; if(!fileGroups[fn])fileGroups[fn]={pass:[],fail:[]}; fileGroups[fn].fail.push(f); });
-    let html = `<h2>${escapeHtml(data.label || file)}</h2>
-      <div class="rd-time">${escapeHtml(data.time || '')}</div>
-      <div style="display:flex;gap:14px;margin-bottom:18px;">
-        <span style="color:#4ade80;font-weight:600;">${passCount} passed</span>
-        <span style="color:#f87171;font-weight:600;">${failCount} failed</span>
-        <span style="color:#6c7bf0;font-weight:600;">${passCount+failCount} total</span>
-      </div>`;
-    Object.keys(fileGroups).sort().forEach(fname => {
-      const g = fileGroups[fname];
-      html += `<div style="margin-bottom:16px;">
-        <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:#1e2040;border-radius:8px;margin-bottom:6px;">
-          <span style="font-weight:600;color:#d4d8f0;font-size:0.85rem;flex:1;">${escapeHtml(fname)}</span>
-          <span style="color:#4ade80;font-size:0.75rem;font-weight:600;">${g.pass.length} passed</span>
-          ${g.fail.length ? `<span style="color:#f87171;font-size:0.75rem;font-weight:600;">${g.fail.length} failed</span>` : ''}
-        </div><ul class="rd-test-list" style="margin-left:8px;">`;
-      g.pass.forEach(t => { html += `<li class="rd-test-item"><span class="badge badge-pass">Pass</span><div class="rd-test-title">${escapeHtml(t)}</div></li>`; });
-      g.fail.forEach(f => { html += `<li class="rd-test-item"><span class="badge badge-fail">Fail</span><div><div class="rd-test-title">${escapeHtml(f.title||'')}</div>${f.err&&f.err.message?`<div class="rd-test-err">${escapeHtml(f.err.message)}</div>`:''}</div></li>`; });
-      html += `</ul></div>`;
-    });
-    html += `<div style="text-align:right;margin-top:16px;display:flex;gap:10px;justify-content:flex-end;">
-      <button class="btn btn-primary" onclick="downloadReportAsPDF('${escapeHtml(file)}')">⬇ Download PDF</button>
-      <button class="btn btn-secondary" onclick="closeReportDetail()">Close</button>
-    </div>`;
-    modal.innerHTML = html;
-  }).catch(err => {
-    modal.innerHTML = `<span style="color:#f87171;">Error: ${escapeHtml(err.message)}</span>
-      <div style="text-align:right;margin-top:16px;"><button class="btn btn-secondary" onclick="closeReportDetail()">Close</button></div>`;
-  });
-}
-
-function closeReportDetail() {
-  document.getElementById('reportDetailOverlay').classList.remove('visible');
-}
-
-/* ── UTILS ─────────────────────────────────────────────────────────────────── */
-function escapeHtml(str) {
-  if (!str) return '';
-  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
-}
-
-/* ── SERVER PING ───────────────────────────────────────────────────────────── */
-function checkServerStatus() {
+// ─── Server Ping ───────────────────────────────────────────────────────────────
+function checkServer() {
   const el = document.getElementById('serverStatus');
-  // AbortSignal.timeout() is unsupported in Safari < 16 — use manual AbortController fallback
   const ctrl = new AbortController();
   const tid = setTimeout(() => ctrl.abort(), 3000);
   fetch(SERVER + '/ping', { signal: ctrl.signal })
-    .then(() => { clearTimeout(tid); el.className = 'server-status online'; el.innerHTML = '<span class="status-dot online"></span> Server Online'; })
-    .catch(() => { clearTimeout(tid); el.className = 'server-status offline'; el.innerHTML = '<span class="status-dot offline"></span> Server Offline'; });
+    .then(() => {
+      clearTimeout(tid);
+      el.className = 'server-status online';
+      el.innerHTML = '<span class="status-dot online"></span> Server Online';
+    })
+    .catch(() => {
+      clearTimeout(tid);
+      el.className = 'server-status offline';
+      el.innerHTML = '<span class="status-dot offline"></span> Server Offline';
+    });
 }
-checkServerStatus();
-setInterval(checkServerStatus, 10000);
+checkServer();
+setInterval(checkServer, 10000);
 </script>
 </body>
 </html>

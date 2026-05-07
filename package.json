@@ -4,6 +4,7 @@
   "description": "Cypress E2E tests for Circuly Unified Customer API (2026-04)",
   "private": true,
   "scripts": {
+    "dashboard": "node cypress/docs/sync-server.js",
     "preall:load": "node -e \"require('fs').mkdirSync('cypress/e2e/load/reports',{recursive:true})\"",
     "all:load": "dotenv -- k6 run cypress/e2e/load/all-modules.load.test.js",
     "prelogin:load": "node -e \"require('fs').mkdirSync('cypress/e2e/load/reports',{recursive:true})\"",
