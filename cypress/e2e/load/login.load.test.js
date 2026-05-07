@@ -13,7 +13,7 @@
  * Run: npm run login:load
  */
 
-import { http, check, sleep, textSummary, BASE_URL, API_VERSION, CONSUMER_KEY, CONSUMER_SECRET } from '../../support/helpers/k6.js';
+import * as k6 from '../../support/helpers/k6.js';
 import { buildHtmlReport } from '../../support/helpers/report.js';
 import { buildThresholds } from '../../support/helpers/thresholds.js';
 
@@ -44,13 +44,13 @@ export const options = {
 
 // Verify that the credentials actually work before we start hammering the endpoint.
 export function setup() {
-  const res = http.post(
-    `${BASE_URL}/${API_VERSION}/auth/login`,
-    JSON.stringify({ consumer_key: CONSUMER_KEY, consumer_secret: CONSUMER_SECRET }),
+  const res = k6.http.post(
+    `${k6.BASE_URL}/${k6.API_VERSION}/auth/login`,
+    JSON.stringify({ consumer_key: k6.CONSUMER_KEY, consumer_secret: k6.CONSUMER_SECRET }),
     { headers: { 'Content-Type': 'application/json' } }
   );
 
-  check(res, {
+  k6.check(res, {
     'setup: status 200': (r) => r.status === 200,
     'setup: has token':  (r) => !!JSON.parse(r.body).token,
   });
@@ -63,11 +63,11 @@ export function setup() {
 }
 
 export default function () {
-  sleep(SLEEP_BETWEEN_REQUESTS);
+  k6.sleep(SLEEP_BETWEEN_REQUESTS);
 
-  const res = http.post(
-    `${BASE_URL}/${API_VERSION}/auth/login`,
-    JSON.stringify({ consumer_key: CONSUMER_KEY, consumer_secret: CONSUMER_SECRET }),
+  const res = k6.http.post(
+    `${k6.BASE_URL}/${k6.API_VERSION}/auth/login`,
+    JSON.stringify({ consumer_key: k6.CONSUMER_KEY, consumer_secret: k6.CONSUMER_SECRET }),
     {
       headers: { 'Content-Type': 'application/json' },
       tags: { scenario: 'load', module: 'auth', endpoint: 'auth.login' },
@@ -75,11 +75,11 @@ export default function () {
     }
   );
 
-  check(res, {
-    'status 200':      (r) => r.status === 200,
-    'has token':       (r) => { try { return !!JSON.parse(r.body).token; }       catch { return false; } },
-    'has company_id':  (r) => { try { return !!JSON.parse(r.body).company_id; }  catch { return false; } },
-    'under 800ms':     (r) => r.timings.duration < 800,
+  k6.check(res, {
+    'status 200':     (r) => r.status === 200,
+    'has token':      (r) => { try { return !!JSON.parse(r.body).token; }      catch { return false; } },
+    'has company_id': (r) => { try { return !!JSON.parse(r.body).company_id; } catch { return false; } },
+    'under 800ms':    (r) => r.timings.duration < 800,
   });
 }
 
@@ -99,6 +99,6 @@ const REPORT_CONFIG = {
 export function handleSummary(data) {
   return {
     'cypress/e2e/load/reports/login-load-report.html': buildHtmlReport(data, REPORT_CONFIG),
-    stdout: textSummary(data, { indent: '  ', enableColors: true }),
+    stdout: k6.textSummary(data, { indent: '  ', enableColors: true }),
   };
 }

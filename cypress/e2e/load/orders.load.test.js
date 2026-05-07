@@ -17,7 +17,7 @@
  * Run: npm run orders:load
  */
 
-import { http, check, sleep, textSummary, BASE_URL, API_VERSION } from '../../support/helpers/k6.js';
+import * as k6 from '../../support/helpers/k6.js';
 import { getToken, setupAuth } from '../../support/helpers/auth.js';
 import { buildHtmlReport } from '../../support/helpers/report.js';
 import { buildThresholds } from '../../support/helpers/thresholds.js';
@@ -58,8 +58,8 @@ export const options = {
 export function setup() {
   const { token, companyId } = setupAuth();
 
-  const res = http.get(
-    `${BASE_URL}/${API_VERSION}/${companyId}/circulydb/orders?page=1&per_page=1`,
+  const res = k6.http.get(
+    `${k6.BASE_URL}/${k6.API_VERSION}/${companyId}/circulydb/orders?page=1&per_page=1`,
     { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } }
   );
 
@@ -85,7 +85,7 @@ export function setup() {
 // getToken() handles token caching and auto-refresh per VU.
 export default function ({ orderId }) {
   const { token, companyId } = getToken();
-  const base = `${BASE_URL}/${API_VERSION}/${companyId}/circulydb`;
+  const base = `${k6.BASE_URL}/${k6.API_VERSION}/${companyId}/circulydb`;
 
   // Both tags are required: 'module' enables the group-level threshold,
   // 'endpoint' enables the per-endpoint threshold.
@@ -100,22 +100,22 @@ export default function ({ orderId }) {
   });
 
   // GET /orders — paginated list
-  sleep(SLEEP_BETWEEN_REQUESTS);
-  const listRes = http.get(
+  k6.sleep(SLEEP_BETWEEN_REQUESTS);
+  const listRes = k6.http.get(
     `${base}/orders?page=1&per_page=100&sort=created_at&desc=true`,
     params('orders.get_list')
   );
-  check(listRes, {
+  k6.check(listRes, {
     'get_list: status 200':  (r) => r.status === 200,
     'get_list: has data':    (r) => Array.isArray(JSON.parse(r.body).data),
     'get_list: under 500ms': (r) => r.timings.duration < 500,
   });
 
   // GET /orders/:id
-  sleep(SLEEP_BETWEEN_REQUESTS);
+  k6.sleep(SLEEP_BETWEEN_REQUESTS);
   if (orderId) {
-    const byIdRes = http.get(`${base}/orders/${orderId}`, params('orders.get_by_id'));
-    check(byIdRes, {
+    const byIdRes = k6.http.get(`${base}/orders/${orderId}`, params('orders.get_by_id'));
+    k6.check(byIdRes, {
       'get_by_id: status 200':   (r) => r.status === 200,
       'get_by_id: has order_id': (r) => !!JSON.parse(r.body).order_id,
       'get_by_id: under 500ms':  (r) => r.timings.duration < 500,
@@ -123,51 +123,51 @@ export default function ({ orderId }) {
   }
 
   // GET /orders/:id/payment-update-link
-  sleep(SLEEP_BETWEEN_REQUESTS);
+  k6.sleep(SLEEP_BETWEEN_REQUESTS);
   if (orderId) {
-    const linkRes = http.get(
+    const linkRes = k6.http.get(
       `${base}/orders/${orderId}/payment-update-link`,
       params('orders.get_payment_update_link')
     );
-    check(linkRes, {
+    k6.check(linkRes, {
       'payment_update_link: status 200':  (r) => r.status === 200,
       'payment_update_link: under 800ms': (r) => r.timings.duration < 800,
     });
   }
 
   // GET /orders/:id/payment-details
-  sleep(SLEEP_BETWEEN_REQUESTS);
+  k6.sleep(SLEEP_BETWEEN_REQUESTS);
   if (orderId) {
-    const detailsRes = http.get(
+    const detailsRes = k6.http.get(
       `${base}/orders/${orderId}/payment-details`,
       params('orders.get_payment_details')
     );
-    check(detailsRes, {
+    k6.check(detailsRes, {
       'payment_details: status 200':  (r) => r.status === 200,
       'payment_details: under 800ms': (r) => r.timings.duration < 800,
     });
   }
 
   // GET /orders — with explicit filter params
-  sleep(SLEEP_BETWEEN_REQUESTS);
-  const filterRes = http.get(
+  k6.sleep(SLEEP_BETWEEN_REQUESTS);
+  const filterRes = k6.http.get(
     `${base}/orders?page=1&per_page=100&sort=created_at&desc=true`,
     params('orders.get_by_filter')
   );
-  check(filterRes, {
+  k6.check(filterRes, {
     'get_by_filter: status 200':  (r) => r.status === 200,
     'get_by_filter: has data':    (r) => Array.isArray(JSON.parse(r.body).data),
     'get_by_filter: under 500ms': (r) => r.timings.duration < 500,
   });
 
   // GET /orders?search=:orderId
-  sleep(SLEEP_BETWEEN_REQUESTS);
+  k6.sleep(SLEEP_BETWEEN_REQUESTS);
   if (orderId) {
-    const searchRes = http.get(
+    const searchRes = k6.http.get(
       `${base}/orders?search=${orderId}&sort=created_at&desc=true`,
       params('orders.get_by_search')
     );
-    check(searchRes, {
+    k6.check(searchRes, {
       'get_by_search: status 200':  (r) => r.status === 200,
       'get_by_search: has data':    (r) => Array.isArray(JSON.parse(r.body).data),
       'get_by_search: under 500ms': (r) => r.timings.duration < 500,
@@ -196,6 +196,6 @@ const REPORT_CONFIG = {
 export function handleSummary(data) {
   return {
     'cypress/e2e/load/reports/orders-load-report.html': buildHtmlReport(data, REPORT_CONFIG),
-    stdout: textSummary(data, { indent: '  ', enableColors: true }),
+    stdout: k6.textSummary(data, { indent: '  ', enableColors: true }),
   };
 }
