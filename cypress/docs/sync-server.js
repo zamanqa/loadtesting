@@ -484,7 +484,7 @@ function generatePdfHtml(record) {
 <meta charset="UTF-8">
 <title>k6 Report — ${esc(label)}</title>
 <style>
-  @page { size: A4; margin: 14mm 14mm; }
+  @page { size: A4 landscape; margin: 10mm 12mm; }
   @media print {
     body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     .no-print { display: none !important; }
@@ -514,7 +514,7 @@ function generatePdfHtml(record) {
   .stat-box .lbl { font-size: 0.65rem; color: #6b7280; text-transform: uppercase; letter-spacing: 0.8px; margin-top: 2px; }
 
   /* Section */
-  .section { padding: 18px 28px; }
+  .section { padding: 12px 20px; }
   .section-title {
     font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
     color: #6c7bf0; margin-bottom: 10px; padding-bottom: 6px;
@@ -524,9 +524,9 @@ function generatePdfHtml(record) {
   /* Terminal block */
   .terminal {
     background: #0a0b14; border: 1px solid #1e2040; border-radius: 6px;
-    padding: 14px 16px; overflow-x: auto;
+    padding: 12px 14px; overflow: visible;
     font-family: 'Consolas', 'Courier New', monospace;
-    font-size: 0.73rem; line-height: 1.65; white-space: pre; color: #9ba3c4;
+    font-size: 0.65rem; line-height: 1.6; white-space: pre; color: #9ba3c4;
   }
   .t-pass   { color: #4ade80; }
   .t-fail   { color: #f87171; }
