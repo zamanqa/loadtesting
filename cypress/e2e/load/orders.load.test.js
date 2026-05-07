@@ -5,7 +5,7 @@
  *   GET /orders                              (list)
  *   GET /orders/:id                          (by ID)
  *   GET /orders/:id/payment-update-link
- *   GET /orders/:id/payment-details
+ *   GET /orders/:id/payment-methods
  *   GET /orders?page=1&per_page=100&sort=... (filter)
  *   GET /orders?search=:id                  (search)
  *
@@ -31,7 +31,7 @@ const ENDPOINTS = [
   { tag: 'orders.get_list',                p95: 3000 },
   { tag: 'orders.get_by_id',               p95: 3000 },
   { tag: 'orders.get_payment_update_link', p95: 3000 },
-  { tag: 'orders.get_payment_details',     p95: 3000 },
+  { tag: 'orders.get_payment_methods',     p95: 3000 },
   { tag: 'orders.get_by_filter',           p95: 3000 },
   { tag: 'orders.get_by_search',           p95: 3000 },
 ];
@@ -138,16 +138,16 @@ export default function ({ orderId }) {
     });
   }
 
-  // GET /orders/:id/payment-details
+  // GET /orders/:id/payment-methods
   k6.sleep(SLEEP_BETWEEN_REQUESTS);
   if (orderId) {
     const detailsRes = k6.http.get(
-      `${base}/orders/${orderId}/payment-details`,
-      params('orders.get_payment_details')
+      `${base}/orders/${orderId}/payment-methods`,
+      params('orders.get_payment_methods')
     );
     k6.check(detailsRes, {
-      'payment_details: status 200':                                       (r) => r.status === 200,
-      [`payment_details: under ${limit['orders.get_payment_details']}ms`]: (r) => r.timings.duration < limit['orders.get_payment_details'],
+      'payment_methods: status 200':                                       (r) => r.status === 200,
+      [`payment_methods: under ${limit['orders.get_payment_methods']}ms`]: (r) => r.timings.duration < limit['orders.get_payment_methods'],
     });
   }
 
@@ -194,7 +194,7 @@ const REPORT_CONFIG = {
       'orders.get_list':                'GET /orders (list)',
       'orders.get_by_id':               'GET /orders/:id',
       'orders.get_payment_update_link': 'GET /orders/:id/payment-update-link',
-      'orders.get_payment_details':     'GET /orders/:id/payment-details',
+      'orders.get_payment_methods':     'GET /orders/:id/payment-methods',
       'orders.get_by_filter':           'GET /orders (filter)',
       'orders.get_by_search':           'GET /orders?search=:id',
     }[tag],
