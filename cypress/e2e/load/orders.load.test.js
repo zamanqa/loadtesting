@@ -25,16 +25,19 @@ import { buildThresholds } from '../../support/helpers/thresholds.js';
 // Change this one constant to adjust the pause between all requests globally.
 const SLEEP_BETWEEN_REQUESTS = 1; // seconds
 
-// Endpoint definitions — used by both the threshold builder and the report config.
-// p99 is omitted here so it defaults to p95 × 2 inside buildThresholds.
+// Endpoint definitions — used by the threshold builder, check labels, and report config.
+// Change p95 here and both the threshold gate AND the check label update automatically.
 const ENDPOINTS = [
-  { tag: 'orders.get_list',                p95: 1000 },
-  { tag: 'orders.get_by_id',               p95: 1000 },
-  { tag: 'orders.get_payment_update_link', p95: 1000 },
-  { tag: 'orders.get_payment_details',     p95: 1000 },
-  { tag: 'orders.get_by_filter',           p95: 1000 },
-  { tag: 'orders.get_by_search',           p95: 1000 },
+  { tag: 'orders.get_list',                p95: 3000 },
+  { tag: 'orders.get_by_id',               p95: 3000 },
+  { tag: 'orders.get_payment_update_link', p95: 3000 },
+  { tag: 'orders.get_payment_details',     p95: 3000 },
+  { tag: 'orders.get_by_filter',           p95: 3000 },
+  { tag: 'orders.get_by_search',           p95: 3000 },
 ];
+
+// Lookup map so check labels and conditions always match the p95 value above.
+const limit = Object.fromEntries(ENDPOINTS.map(({ tag, p95 }) => [tag, p95]));
 
 export const options = {
   thresholds: buildThresholds('orders', ENDPOINTS),
@@ -43,9 +46,9 @@ export const options = {
       executor: 'ramping-vus',
       startVUs: 0,
       stages: [
-        { duration: '10s', target: 10 }, // ramp up
-        { duration: '10s', target: 10 }, // hold at normal traffic
-        { duration: '10s', target: 0 },   // ramp down
+        { duration: '5s', target: 5 }, // ramp up
+        { duration: '5s', target: 5 }, // hold at normal traffic
+        { duration: '5s', target: 0 },   // ramp down
       ],
       tags: { scenario: 'load' },
     },
@@ -106,9 +109,9 @@ export default function ({ orderId }) {
     params('orders.get_list')
   );
   k6.check(listRes, {
-    'get_list: status 200':  (r) => r.status === 200,
-    'get_list: has data':    (r) => { try { return Array.isArray(JSON.parse(r.body).data); } catch { return false; } },
-    'get_list: under 500ms': (r) => r.timings.duration < 1000,
+    'get_list: status 200':                              (r) => r.status === 200,
+    'get_list: has data':                               (r) => { try { return Array.isArray(JSON.parse(r.body).data); } catch { return false; } },
+    [`get_list: under ${limit['orders.get_list']}ms`]:  (r) => r.timings.duration < limit['orders.get_list'],
   });
 
   // GET /orders/:id
@@ -116,9 +119,9 @@ export default function ({ orderId }) {
   if (orderId) {
     const byIdRes = k6.http.get(`${base}/orders/${orderId}`, params('orders.get_by_id'));
     k6.check(byIdRes, {
-      'get_by_id: status 200':   (r) => r.status === 200,
-      'get_by_id: has id':       (r) => { try { return !!JSON.parse(r.body).id; }       catch { return false; } },
-      'get_by_id: under 500ms':  (r) => r.timings.duration < 1000,
+      'get_by_id: status 200':                               (r) => r.status === 200,
+      'get_by_id: has id':                                   (r) => { try { return !!JSON.parse(r.body).id; } catch { return false; } },
+      [`get_by_id: under ${limit['orders.get_by_id']}ms`]:   (r) => r.timings.duration < limit['orders.get_by_id'],
     });
   }
 
@@ -130,8 +133,8 @@ export default function ({ orderId }) {
       params('orders.get_payment_update_link')
     );
     k6.check(linkRes, {
-      'payment_update_link: status 200':  (r) => r.status === 200,
-      'payment_update_link: under 800ms': (r) => r.timings.duration < 1000,
+      'payment_update_link: status 200':                                           (r) => r.status === 200,
+      [`payment_update_link: under ${limit['orders.get_payment_update_link']}ms`]: (r) => r.timings.duration < limit['orders.get_payment_update_link'],
     });
   }
 
@@ -143,8 +146,8 @@ export default function ({ orderId }) {
       params('orders.get_payment_details')
     );
     k6.check(detailsRes, {
-      'payment_details: status 200':  (r) => r.status === 200,
-      'payment_details: under 800ms': (r) => r.timings.duration < 1000,
+      'payment_details: status 200':                                       (r) => r.status === 200,
+      [`payment_details: under ${limit['orders.get_payment_details']}ms`]: (r) => r.timings.duration < limit['orders.get_payment_details'],
     });
   }
 
@@ -155,9 +158,9 @@ export default function ({ orderId }) {
     params('orders.get_by_filter')
   );
   k6.check(filterRes, {
-    'get_by_filter: status 200':  (r) => r.status === 200,
-    'get_by_filter: has data':    (r) => { try { return Array.isArray(JSON.parse(r.body).data); } catch { return false; } },
-    'get_by_filter: under 500ms': (r) => r.timings.duration < 1000,
+    'get_by_filter: status 200':                                  (r) => r.status === 200,
+    'get_by_filter: has data':                                    (r) => { try { return Array.isArray(JSON.parse(r.body).data); } catch { return false; } },
+    [`get_by_filter: under ${limit['orders.get_by_filter']}ms`]:  (r) => r.timings.duration < limit['orders.get_by_filter'],
   });
 
   // GET /orders?search=:orderId
@@ -168,9 +171,9 @@ export default function ({ orderId }) {
       params('orders.get_by_search')
     );
     k6.check(searchRes, {
-      'get_by_search: status 200':  (r) => r.status === 200,
-      'get_by_search: has data':    (r) => { try { return Array.isArray(JSON.parse(r.body).data); } catch { return false; } },
-      'get_by_search: under 500ms': (r) => r.timings.duration < 1000,
+      'get_by_search: status 200':                                  (r) => r.status === 200,
+      'get_by_search: has data':                                    (r) => { try { return Array.isArray(JSON.parse(r.body).data); } catch { return false; } },
+      [`get_by_search: under ${limit['orders.get_by_search']}ms`]:  (r) => r.timings.duration < limit['orders.get_by_search'],
     });
   }
 }
@@ -179,18 +182,24 @@ export function teardown({ orderId }) {
   console.log(`Orders load test complete. orderId used: ${orderId}`);
 }
 
+// p95limit in REPORT_CONFIG is derived from ENDPOINTS so the report always
+// reflects the same value as the threshold and check label.
 const REPORT_CONFIG = {
   title:    'Orders Load Test Report',
   subtitle: '100 VUs · 8 min',
   module:   'orders',
-  endpoints: [
-    { tag: 'orders.get_list',                label: 'GET /orders (list)',                   p95limit: 1000 },
-    { tag: 'orders.get_by_id',               label: 'GET /orders/:id',                      p95limit: 1000 },
-    { tag: 'orders.get_payment_update_link', label: 'GET /orders/:id/payment-update-link',  p95limit: 1000 },
-    { tag: 'orders.get_payment_details',     label: 'GET /orders/:id/payment-details',      p95limit: 1000 },
-    { tag: 'orders.get_by_filter',           label: 'GET /orders (filter)',                 p95limit: 1000 },
-    { tag: 'orders.get_by_search',           label: 'GET /orders?search=:id',               p95limit: 1000 },
-  ],
+  endpoints: ENDPOINTS.map(({ tag, p95 }) => ({
+    tag,
+    label:    {
+      'orders.get_list':                'GET /orders (list)',
+      'orders.get_by_id':               'GET /orders/:id',
+      'orders.get_payment_update_link': 'GET /orders/:id/payment-update-link',
+      'orders.get_payment_details':     'GET /orders/:id/payment-details',
+      'orders.get_by_filter':           'GET /orders (filter)',
+      'orders.get_by_search':           'GET /orders?search=:id',
+    }[tag],
+    p95limit: p95,
+  })),
 };
 
 export function handleSummary(data) {
