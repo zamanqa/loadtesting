@@ -16,6 +16,7 @@ import http from 'k6/http';
 import { check, sleep } from 'k6';
 import { getToken, setupAuth } from '../../support/helpers/auth.js';
 import { textSummary } from 'https://jslib.k6.io/k6-summary/0.0.1/index.js';
+import { ms, pct, getMetric, passed } from '../../support/helpers/report.js';
 
 const BASE_URL    = __ENV.BASE_URL;
 const API_VERSION = __ENV.API_VERSION || '2026-04';
@@ -178,25 +179,6 @@ export function handleSummary(data) {
     'cypress/e2e/load/reports/orders-load-report.html': buildHtmlReport(data),
     stdout: textSummary(data, { indent: '  ', enableColors: true }),
   };
-}
-
-// ─── Report helpers ───────────────────────────────────────────────────────────
-
-function ms(val) {
-  return val != null ? `${Math.round(val)} ms` : '—';
-}
-
-function pct(val) {
-  return val != null ? `${(val * 100).toFixed(1)}%` : '—';
-}
-
-function getMetric(data, key) {
-  return data.metrics[key] ? data.metrics[key].values : null;
-}
-
-function passed(data, key) {
-  const t = data.thresholds && data.thresholds[key];
-  return t ? t.ok !== false : null;
 }
 
 const ENDPOINTS = [
