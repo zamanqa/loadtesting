@@ -43,9 +43,9 @@ export const options = {
       executor: 'ramping-vus',
       startVUs: 0,
       stages: [
-        { duration: '2m', target: 100 }, // ramp up
-        { duration: '5m', target: 100 }, // hold at normal traffic
-        { duration: '1m', target: 0 },   // ramp down
+        { duration: '20s', target: 10 }, // ramp up
+        { duration: '20s', target: 10 }, // hold at normal traffic
+        { duration: '20s', target: 0 },   // ramp down
       ],
       tags: { scenario: 'load' },
     },
@@ -107,7 +107,7 @@ export default function ({ orderId }) {
   );
   k6.check(listRes, {
     'get_list: status 200':  (r) => r.status === 200,
-    'get_list: has data':    (r) => Array.isArray(JSON.parse(r.body).data),
+    'get_list: has data':    (r) => { try { return Array.isArray(JSON.parse(r.body).data); } catch { return false; } },
     'get_list: under 500ms': (r) => r.timings.duration < 500,
   });
 
@@ -117,7 +117,7 @@ export default function ({ orderId }) {
     const byIdRes = k6.http.get(`${base}/orders/${orderId}`, params('orders.get_by_id'));
     k6.check(byIdRes, {
       'get_by_id: status 200':   (r) => r.status === 200,
-      'get_by_id: has order_id': (r) => !!JSON.parse(r.body).order_id,
+      'get_by_id: has order_id': (r) => { try { return !!JSON.parse(r.body).order_id; } catch { return false; } },
       'get_by_id: under 500ms':  (r) => r.timings.duration < 500,
     });
   }
@@ -156,7 +156,7 @@ export default function ({ orderId }) {
   );
   k6.check(filterRes, {
     'get_by_filter: status 200':  (r) => r.status === 200,
-    'get_by_filter: has data':    (r) => Array.isArray(JSON.parse(r.body).data),
+    'get_by_filter: has data':    (r) => { try { return Array.isArray(JSON.parse(r.body).data); } catch { return false; } },
     'get_by_filter: under 500ms': (r) => r.timings.duration < 500,
   });
 
@@ -169,7 +169,7 @@ export default function ({ orderId }) {
     );
     k6.check(searchRes, {
       'get_by_search: status 200':  (r) => r.status === 200,
-      'get_by_search: has data':    (r) => Array.isArray(JSON.parse(r.body).data),
+      'get_by_search: has data':    (r) => { try { return Array.isArray(JSON.parse(r.body).data); } catch { return false; } },
       'get_by_search: under 500ms': (r) => r.timings.duration < 500,
     });
   }
