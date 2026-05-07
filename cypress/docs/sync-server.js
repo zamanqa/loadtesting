@@ -63,6 +63,100 @@ function pruneRunHistory(keep = 30) {
   }
 }
 
+// ── k6 test-file parser ───────────────────────────────────────────────────────
+const LOAD_TEST_DIR = path.join(ROOT, 'cypress', 'e2e', 'load');
+
+const LOAD_TEST_FILES = [
+  { file: 'all-modules.load.test.js',        id: 'all',                 script: 'all:load',                label: 'All Modules' },
+  { file: 'orders.load.test.js',             id: 'orders',              script: 'orders:load',             label: 'Orders' },
+  { file: 'subscriptions.load.test.js',      id: 'subscriptions',       script: 'subscriptions:load',      label: 'Subscriptions' },
+  { file: 'customers.load.test.js',          id: 'customers',           script: 'customers:load',          label: 'Customers' },
+  { file: 'invoices.load.test.js',           id: 'invoices',            script: 'invoices:load',           label: 'Invoices' },
+  { file: 'transactions.load.test.js',       id: 'transactions',        script: 'transactions:load',       label: 'Transactions' },
+  { file: 'draft-orders.load.test.js',       id: 'draft-orders',        script: 'draft-orders:load',       label: 'Draft Orders' },
+  { file: 'recurring-payments.load.test.js', id: 'recurring-payments',  script: 'recurring-payments:load', label: 'Recurring Payments' },
+  { file: 'products.load.test.js',           id: 'products',            script: 'products:load',           label: 'Products' },
+  { file: 'retailers.load.test.js',          id: 'retailers',           script: 'retailers:load',          label: 'Retailers' },
+  { file: 'vouchers.load.test.js',           id: 'vouchers',            script: 'vouchers:load',           label: 'Vouchers' },
+];
+
+/** Extract ENDPOINTS array entries: { tag, p95, p90? } */
+function parseEndpoints(content) {
+  const m = content.match(/const\s+ENDPOINTS\s*=\s*\[([\s\S]*?)\];/);
+  if (!m) return [];
+  const block = m[1];
+  const results = [];
+  // Match { tag: 'foo.bar', p95: 1100, p90: 1000 } in any order
+  const re = /\{[^}]*tag:\s*['"]([^'"]+)['"][^}]*p95:\s*(\d+)[^}]*(?:p90:\s*(\d+))?[^}]*\}/g;
+  let em;
+  while ((em = re.exec(block)) !== null) {
+    results.push({ tag: em[1], p95: parseInt(em[2]), p90: em[3] ? parseInt(em[3]) : null });
+  }
+  return results;
+}
+
+/** Extract stages → maxVUs and totalDurationSec */
+function parseStages(content) {
+  const m = content.match(/stages:\s*\[([\s\S]*?)\]/);
+  if (!m) return { maxVUs: 5, totalDurationSec: 30 };
+  const block = m[1];
+  let maxVUs = 0, totalSec = 0;
+  const re = /duration:\s*['"](\d+)([smh])['"]\s*,\s*target:\s*(\d+)/g;
+  let sm;
+  while ((sm = re.exec(block)) !== null) {
+    const n = parseInt(sm[1]);
+    const sec = sm[2] === 's' ? n : sm[2] === 'm' ? n * 60 : n * 3600;
+    const t = parseInt(sm[3]);
+    totalSec += sec;
+    if (t > maxVUs) maxVUs = t;
+  }
+  return { maxVUs, totalDurationSec: totalSec };
+}
+
+/** Extract label map from REPORT_CONFIG: { 'mod.ep_tag': 'GET /path' } */
+function parseLabels(content) {
+  const labels = {};
+  // Matches: 'orders.get_list': 'GET /orders (list)'
+  const re = /['"]([a-z_]+\.[a-z_]+)['"]\s*:\s*['"]((GET|POST|PUT|DELETE|PATCH)[^'"]+)['"]/g;
+  let m;
+  while ((m = re.exec(content)) !== null) labels[m[1]] = m[2];
+  return labels;
+}
+
+function formatDuration(totalSec) {
+  if (totalSec < 60)   return `${totalSec}s`;
+  if (totalSec < 3600) return `${Math.round(totalSec / 60)} min`;
+  return `${(totalSec / 3600).toFixed(1)} hr`;
+}
+
+function handleMeta(res) {
+  const modules = [];
+  for (const { file, id, script, label } of LOAD_TEST_FILES) {
+    const filePath = path.join(LOAD_TEST_DIR, file);
+    if (!fs.existsSync(filePath)) { console.warn(`[meta] missing: ${file}`); continue; }
+    try {
+      const content     = fs.readFileSync(filePath, 'utf8');
+      const endpoints   = parseEndpoints(content);
+      const { maxVUs, totalDurationSec } = parseStages(content);
+      const labels      = parseLabels(content);
+      modules.push({
+        id, script, label,
+        vus:      maxVUs,
+        duration: formatDuration(totalDurationSec),
+        endpoints: endpoints.map(ep => ({
+          tag:   ep.tag,
+          label: labels[ep.tag] || ep.tag,
+          p95:   ep.p95,
+          p90:   ep.p90 ?? Math.round(ep.p95 * 0.9),
+        })),
+      });
+    } catch (e) { console.error(`[meta] parse error ${file}:`, e.message); }
+  }
+  console.log(`[${ts()}] /meta → ${modules.length} modules, ${modules.reduce((s,m)=>s+m.endpoints.length,0)} endpoints`);
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify({ ok: true, modules }));
+}
+
 // ── Route handlers ────────────────────────────────────────────────────────────
 
 function handleDashboard(res) {
@@ -346,6 +440,7 @@ const server = http.createServer((req, res) => {
 
   if (pathname === '/' || pathname === '/index.html')           return handleDashboard(res);
   if (pathname === '/ping')                                     return handlePing(res);
+  if (pathname === '/meta'          && req.method === 'GET')    return handleMeta(res);
   if (pathname === '/run'           && req.method === 'GET')    return handleK6Run(req, res);
   if (pathname === '/stop'          && req.method === 'POST')   return handleStop(res);
   if (pathname === '/reports'       && req.method === 'GET')    return handleReportsList(res);

@@ -190,16 +190,17 @@
     <h1>k6 Load Test — <span>Circuly API</span> Dashboard</h1>
     <div class="header-actions">
       <span class="server-status" id="serverStatus"><span class="status-dot offline"></span> Server Offline</span>
+      <button class="btn btn-secondary" onclick="syncMeta()" title="Re-read test files">⟳ Sync</button>
       <button class="btn btn-primary" id="btnRunAll" onclick="runModule('all', this)">▶ Run All Modules</button>
       <button class="btn btn-danger" id="btnStop" onclick="stopRun()" style="display:none;">■ Stop</button>
     </div>
   </div>
   <div class="stats-row">
-    <div class="stat-box"><div class="num" id="statModules">11</div><div class="lbl">Modules</div></div>
-    <div class="stat-box"><div class="num" id="statEndpoints">44</div><div class="lbl">Endpoints</div></div>
+    <div class="stat-box"><div class="num" id="statModules">…</div><div class="lbl">Modules</div></div>
+    <div class="stat-box"><div class="num" id="statEndpoints">…</div><div class="lbl">Endpoints</div></div>
     <div class="stat-box pass"><div class="num" id="statPassed">—</div><div class="lbl">Thresholds Passed</div></div>
     <div class="stat-box fail"><div class="num" id="statFailed">—</div><div class="lbl">Thresholds Failed</div></div>
-    <div class="stat-box"><div class="num" id="statVUs">60</div><div class="lbl">Max VUs (All)</div></div>
+    <div class="stat-box"><div class="num" id="statVUs">…</div><div class="lbl">Max VUs (All)</div></div>
   </div>
 </div>
 
@@ -231,8 +232,8 @@ Then click ▶ Run next to any module.</div></div>
 <script>
 const SERVER = window.location.protocol === 'file:' ? 'http://127.0.0.1:7357' : '';
 
-// ─── Module definitions ────────────────────────────────────────────────────────
-const MODULES = [
+// ─── Module definitions (populated dynamically from /meta on load) ────────────
+let MODULES = [
   {
     id: 'all', script: 'all:load', label: 'All Modules',
     vus: 60, duration: '30 min',
@@ -380,20 +381,56 @@ const MODULES = [
 ];
 
 // ─── State ─────────────────────────────────────────────────────────────────────
-let activeTab     = MODULES[0].id;
-let runningSource = null;
-let currentScript = null;
+let activeTab       = 'all';
+let runningSource   = null;
+let currentScript   = null;
 let selectedReports = new Set();
-
-// threshold results for current run: { tag: 'pass'|'fail' }
-let thresholdResults = {};
+let thresholdResults = {};  // { tag: 'pass'|'fail' }
 
 // ─── Init ──────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-  buildTabBar();
-  buildTabContents();
-  switchTab(MODULES[0].id);
+  checkServer();
+  syncMeta();   // parse test files on every page load
 });
+
+// ─── Sync meta from server (parses live test files) ───────────────────────────
+async function syncMeta() {
+  const panel = document.getElementById('leftPanel');
+  panel.innerHTML = '<div style="padding:24px 20px;color:#8890b5;font-size:0.82rem;">⟳ Syncing test files…</div>';
+
+  try {
+    const resp = await fetch(SERVER + '/meta', { signal: AbortSignal.timeout(8000) });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    if (!data.ok || !Array.isArray(data.modules) || !data.modules.length)
+      throw new Error('No modules returned');
+
+    MODULES = data.modules;
+
+    // Update header stats
+    const totalEps = MODULES.reduce((s, m) => s + m.endpoints.length, 0);
+    const allMod   = MODULES.find(m => m.id === 'all');
+    document.getElementById('statModules').textContent   = MODULES.filter(m => m.id !== 'all').length;
+    document.getElementById('statEndpoints').textContent = totalEps;
+    document.getElementById('statVUs').textContent       = allMod ? allMod.vus : '—';
+
+    // Update footer
+    const footer = document.querySelector('.footer');
+    if (footer) footer.textContent =
+      `k6 Load Test Dashboard · Circuly API v2026-04 · ${MODULES.filter(m=>m.id!=='all').length} modules · ${totalEps} endpoints`;
+
+    buildTabBar();
+    buildTabContents();
+    switchTab(activeTab || (MODULES[0] ? MODULES[0].id : 'reports'));
+    showToast('Synced — ' + totalEps + ' endpoints across ' + MODULES.length + ' modules', 'success');
+  } catch (e) {
+    panel.innerHTML = `<div style="padding:24px 20px;color:#f87171;line-height:1.9;">
+      ⚠ Sync failed: ${e.message}<br>
+      <span style="color:#8890b5;font-size:0.78rem;">Start the server first: <code>npm run dashboard</code></span>
+    </div>`;
+    showToast('Sync failed — server offline?', 'error');
+  }
+}
 
 // ─── Tab Bar ───────────────────────────────────────────────────────────────────
 function buildTabBar() {
