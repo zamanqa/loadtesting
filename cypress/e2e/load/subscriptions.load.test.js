@@ -68,10 +68,20 @@ export function setup() {
   }
 
   const body = JSON.parse(res.body);
-  const subscriptionId = body.data && body.data.length > 0 ? body.data[0].subscription_id : null;
+  const first = body.data && body.data.length > 0 ? body.data[0] : null;
+
+  if (!first) {
+    throw new Error(`No data in subscriptions response — full body: ${res.body}`);
+  }
+
+  const subscriptionId = first.subscription_id;
 
   if (!subscriptionId) {
-    throw new Error('No subscriptions found in the database — cannot run test without a valid subscriptionId');
+    throw new Error(
+      `subscription_id is missing from API response.\n` +
+      `Available fields: ${Object.keys(first).join(', ')}\n` +
+      `First record: ${JSON.stringify(first)}`
+    );
   }
 
   console.log(`[setup] Using subscriptionId: ${subscriptionId}`);
