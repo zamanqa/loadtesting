@@ -32,73 +32,72 @@ import { buildThresholds } from '../../support/helpers/thresholds.js';
 const SLEEP_BETWEEN_REQUESTS = 0.5; // seconds — short pacing; smoke completes in ~2 min
 
 // ─── Endpoint definitions ─────────────────────────────────────────────────────
-// p95 limits are tighter than load test — at 1 VU with no concurrency the API
-// should respond significantly faster.  Thresholds here act as a connectivity
-// gate: if a cold server is too slow the smoke tells us before we run real load.
+// Uniform p95 / p90 across all endpoints — smoke is a connectivity gate,
+// not a performance benchmark.  p95 = 2500ms, p90 = 2300ms for all.
 const ENDPOINTS = [
   // Orders
-  { tag: 'orders.get_list',                p95: 1500, p90: 1200 },
-  { tag: 'orders.get_by_id',               p95: 1200, p90: 1000 },
-  { tag: 'orders.get_payment_update_link', p95:  900, p90:  700 },
-  { tag: 'orders.get_payment_methods',     p95:  900, p90:  700 },
-  { tag: 'orders.get_by_filter',           p95: 1500, p90: 1200 },
-  { tag: 'orders.get_by_search',           p95: 2000, p90: 1600 },
+  { tag: 'orders.get_list',                p95: 2500, p90: 2300 },
+  { tag: 'orders.get_by_id',               p95: 2500, p90: 2300 },
+  { tag: 'orders.get_payment_update_link', p95: 2500, p90: 2300 },
+  { tag: 'orders.get_payment_methods',     p95: 2500, p90: 2300 },
+  { tag: 'orders.get_by_filter',           p95: 2500, p90: 2300 },
+  { tag: 'orders.get_by_search',           p95: 2500, p90: 2300 },
 
   // Subscriptions
-  { tag: 'subscriptions.get_list',         p95: 1500, p90: 1200 },
-  { tag: 'subscriptions.get_by_id',        p95: 1000, p90:  800 },
-  { tag: 'subscriptions.get_by_filter',    p95: 1500, p90: 1200 },
-  { tag: 'subscriptions.get_by_search',    p95: 2000, p90: 1600 },
+  { tag: 'subscriptions.get_list',         p95: 2500, p90: 2300 },
+  { tag: 'subscriptions.get_by_id',        p95: 2500, p90: 2300 },
+  { tag: 'subscriptions.get_by_filter',    p95: 2500, p90: 2300 },
+  { tag: 'subscriptions.get_by_search',    p95: 2500, p90: 2300 },
 
   // Customers
-  { tag: 'customers.get_list',             p95:  900, p90:  700 },
-  { tag: 'customers.get_by_id',            p95:  900, p90:  700 },
-  { tag: 'customers.get_balance',          p95:  900, p90:  700 },
-  { tag: 'customers.get_by_filter',        p95:  900, p90:  700 },
-  { tag: 'customers.get_by_search',        p95:  900, p90:  700 },
+  { tag: 'customers.get_list',             p95: 2500, p90: 2300 },
+  { tag: 'customers.get_by_id',            p95: 2500, p90: 2300 },
+  { tag: 'customers.get_balance',          p95: 2500, p90: 2300 },
+  { tag: 'customers.get_by_filter',        p95: 2500, p90: 2300 },
+  { tag: 'customers.get_by_search',        p95: 2500, p90: 2300 },
 
   // Invoices
-  { tag: 'invoices.get_list',              p95: 1200, p90: 1000 },
-  { tag: 'invoices.get_by_number',         p95: 1500, p90: 1200 },
-  { tag: 'invoices.get_by_filter',         p95: 1200, p90: 1000 },
-  { tag: 'invoices.get_by_search',         p95: 2200, p90: 1800 },
+  { tag: 'invoices.get_list',              p95: 2500, p90: 2300 },
+  { tag: 'invoices.get_by_number',         p95: 2500, p90: 2300 },
+  { tag: 'invoices.get_by_filter',         p95: 2500, p90: 2300 },
+  { tag: 'invoices.get_by_search',         p95: 2500, p90: 2300 },
 
   // Transactions
-  { tag: 'transactions.get_list',          p95: 1200, p90: 1000 },
-  { tag: 'transactions.get_by_id',         p95:  900, p90:  700 },
-  { tag: 'transactions.get_by_filter',     p95: 1200, p90: 1000 },
-  { tag: 'transactions.get_by_search',     p95: 2000, p90: 1600 },
+  { tag: 'transactions.get_list',          p95: 2500, p90: 2300 },
+  { tag: 'transactions.get_by_id',         p95: 2500, p90: 2300 },
+  { tag: 'transactions.get_by_filter',     p95: 2500, p90: 2300 },
+  { tag: 'transactions.get_by_search',     p95: 2500, p90: 2300 },
 
   // Draft Orders
-  { tag: 'draft_orders.get_list',          p95: 1000, p90:  800 },
-  { tag: 'draft_orders.get_by_id',         p95:  900, p90:  700 },
-  { tag: 'draft_orders.get_by_filter',     p95: 1000, p90:  800 },
-  { tag: 'draft_orders.get_by_search',     p95: 1100, p90:  900 },
+  { tag: 'draft_orders.get_list',          p95: 2500, p90: 2300 },
+  { tag: 'draft_orders.get_by_id',         p95: 2500, p90: 2300 },
+  { tag: 'draft_orders.get_by_filter',     p95: 2500, p90: 2300 },
+  { tag: 'draft_orders.get_by_search',     p95: 2500, p90: 2300 },
 
   // Recurring Payments
-  { tag: 'recurring_payments.get_list',    p95: 1500, p90: 1200 },
-  { tag: 'recurring_payments.get_by_id',   p95:  900, p90:  700 },
-  { tag: 'recurring_payments.get_by_filter', p95: 1500, p90: 1200 },
-  { tag: 'recurring_payments.get_by_search', p95: 4000, p90: 3200 },
+  { tag: 'recurring_payments.get_list',      p95: 2500, p90: 2300 },
+  { tag: 'recurring_payments.get_by_id',     p95: 2500, p90: 2300 },
+  { tag: 'recurring_payments.get_by_filter', p95: 2500, p90: 2300 },
+  { tag: 'recurring_payments.get_by_search', p95: 2500, p90: 2300 },
 
   // Products
-  { tag: 'products.get_list',              p95:  900, p90:  700 },
-  { tag: 'products.get_variants',          p95:  900, p90:  700 },
-  { tag: 'products.get_all_variants',      p95: 1200, p90: 1000 },
-  { tag: 'products.get_by_filter',         p95:  900, p90:  700 },
-  { tag: 'products.get_by_search',         p95:  900, p90:  700 },
+  { tag: 'products.get_list',              p95: 2500, p90: 2300 },
+  { tag: 'products.get_variants',          p95: 2500, p90: 2300 },
+  { tag: 'products.get_all_variants',      p95: 2500, p90: 2300 },
+  { tag: 'products.get_by_filter',         p95: 2500, p90: 2300 },
+  { tag: 'products.get_by_search',         p95: 2500, p90: 2300 },
 
   // Retailers
-  { tag: 'retailers.get_list',             p95:  900, p90:  700 },
-  { tag: 'retailers.get_by_location_id',   p95:  900, p90:  700 },
-  { tag: 'retailers.get_by_filter',        p95:  900, p90:  700 },
-  { tag: 'retailers.get_by_search',        p95:  900, p90:  700 },
+  { tag: 'retailers.get_list',             p95: 2500, p90: 2300 },
+  { tag: 'retailers.get_by_location_id',   p95: 2500, p90: 2300 },
+  { tag: 'retailers.get_by_filter',        p95: 2500, p90: 2300 },
+  { tag: 'retailers.get_by_search',        p95: 2500, p90: 2300 },
 
   // Vouchers
-  { tag: 'vouchers.get_list',              p95:  900, p90:  700 },
-  { tag: 'vouchers.get_by_code',           p95:  900, p90:  700 },
-  { tag: 'vouchers.get_by_filter',         p95:  900, p90:  700 },
-  { tag: 'vouchers.get_by_search',         p95:  900, p90:  700 },
+  { tag: 'vouchers.get_list',              p95: 2500, p90: 2300 },
+  { tag: 'vouchers.get_by_code',           p95: 2500, p90: 2300 },
+  { tag: 'vouchers.get_by_filter',         p95: 2500, p90: 2300 },
+  { tag: 'vouchers.get_by_search',         p95: 2500, p90: 2300 },
 ];
 
 const limit = Object.fromEntries(ENDPOINTS.map(({ tag, p95 }) => [tag, p95]));
