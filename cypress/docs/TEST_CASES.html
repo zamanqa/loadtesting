@@ -468,7 +468,7 @@ function buildTabContents() {
         <td><span class="ep-tag">${escHtml(ep.tag)}</span></td>
         <td><span class="ep-limit" style="color:#a5b4fc;">${ep.p95}ms</span></td>
         <td><span class="ep-limit" style="color:#8890b5;">${ep.p90}ms</span></td>
-        <td><span class="ep-result notrun" id="epresult-${escId(ep.tag)}">—</span></td>
+        <td><span class="ep-result notrun" id="epresult-${m.id}-${escId(ep.tag)}" data-ep-tag="${ep.tag}">—</span></td>
       </tr>`;
     });
     html += `</tbody></table></div></div></div>`;
@@ -580,11 +580,11 @@ function parseThresholdLine(line, mod) {
   const passed = m[1] === '✓';
   const tag    = m[2].trim();
   thresholdResults[tag] = passed ? 'pass' : 'fail';
-  const el = document.getElementById('epresult-' + escId(tag));
-  if (el) {
+  // Update every tab that contains this endpoint tag (all-modules + individual module)
+  document.querySelectorAll(`[data-ep-tag="${tag}"]`).forEach(el => {
     el.className = 'ep-result ' + (passed ? 'pass' : 'fail');
     el.textContent = passed ? '✓ Pass' : '✗ Fail';
-  }
+  });
   // Update stats
   const allTags = Object.keys(thresholdResults);
   const passed2 = allTags.filter(t => thresholdResults[t] === 'pass').length;
@@ -634,8 +634,9 @@ function setModuleStatus(modId, state) {
 
 function resetEndpointResults(mod) {
   mod.endpoints.forEach(ep => {
-    const el = document.getElementById('epresult-' + escId(ep.tag));
-    if (el) { el.className = 'ep-result notrun'; el.textContent = '—'; }
+    document.querySelectorAll(`[data-ep-tag="${ep.tag}"]`).forEach(el => {
+      el.className = 'ep-result notrun'; el.textContent = '—';
+    });
   });
   document.getElementById('statPassed').textContent = '—';
   document.getElementById('statFailed').textContent = '—';
