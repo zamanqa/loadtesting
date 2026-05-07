@@ -9,6 +9,11 @@
  *   GET /orders?page=1&per_page=100&sort=... (filter)
  *   GET /orders?search=:id                  (search)
  *
+ * Threshold levels:
+ *   1. Global  — applies to every request in the test
+ *   2. Module  — http_req_duration{module:orders} aggregates all 6 endpoints
+ *   3. Endpoint — http_req_duration{endpoint:orders.get_list} etc. per request type
+ *
  * Run: npm run orders:load
  */
 
@@ -17,24 +22,27 @@ import { check, sleep } from 'k6';
 import { getToken, setupAuth } from '../../support/helpers/auth.js';
 import { textSummary } from 'https://jslib.k6.io/k6-summary/0.0.1/index.js';
 import { buildHtmlReport } from '../../support/helpers/report.js';
+import { buildThresholds } from '../../support/helpers/thresholds.js';
 
 const BASE_URL    = __ENV.BASE_URL;
 const API_VERSION = __ENV.API_VERSION || '2026-04';
 
-export const options = {
-  thresholds: {
-    // Global thresholds apply to every request in this test
-    http_req_duration: ['p(95)<500'],
-    http_req_failed:   ['rate<0.01'],
+// Change this one constant to adjust the pause between all requests globally.
+const SLEEP_BETWEEN_REQUESTS = 1; // seconds
 
-    // Per-endpoint thresholds — payment sub-resources are slower by nature
-    'http_req_duration{endpoint:order.get_list}':                ['p(95)<500'],
-    'http_req_duration{endpoint:order.get_by_id}':               ['p(95)<500'],
-    'http_req_duration{endpoint:order.get_payment_update_link}': ['p(95)<800'],
-    'http_req_duration{endpoint:order.get_payment_details}':     ['p(95)<800'],
-    'http_req_duration{endpoint:order.get_by_filter}':           ['p(95)<500'],
-    'http_req_duration{endpoint:order.get_by_search}':           ['p(95)<500'],
-  },
+// Endpoint definitions — used by both the threshold builder and the report config.
+// p99 is omitted here so it defaults to p95 × 2 inside buildThresholds.
+const ENDPOINTS = [
+  { tag: 'orders.get_list',                p95: 500 },
+  { tag: 'orders.get_by_id',               p95: 500 },
+  { tag: 'orders.get_payment_update_link', p95: 800 },
+  { tag: 'orders.get_payment_details',     p95: 800 },
+  { tag: 'orders.get_by_filter',           p95: 500 },
+  { tag: 'orders.get_by_search',           p95: 500 },
+];
+
+export const options = {
+  thresholds: buildThresholds('orders', ENDPOINTS),
   scenarios: {
     load: {
       executor: 'ramping-vus',
@@ -84,82 +92,85 @@ export default function ({ orderId }) {
   const { token, companyId } = getToken();
   const base = `${BASE_URL}/${API_VERSION}/${companyId}/circulydb`;
 
-  const params = (endpoint) => ({
+  // Both tags are required: 'module' enables the group-level threshold,
+  // 'endpoint' enables the per-endpoint threshold.
+  const params = (endpointTag) => ({
     headers: {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
       Accept: 'application/json',
     },
-    tags: { scenario: 'load', endpoint },
+    tags: { scenario: 'load', module: 'orders', endpoint: endpointTag },
     timeout: '10s',
   });
 
   // GET /orders — paginated list
+  sleep(SLEEP_BETWEEN_REQUESTS);
   const listRes = http.get(
     `${base}/orders?page=1&per_page=100&sort=created_at&desc=true`,
-    params('order.get_list')
+    params('orders.get_list')
   );
   check(listRes, {
     'get_list: status 200':  (r) => r.status === 200,
     'get_list: has data':    (r) => Array.isArray(JSON.parse(r.body).data),
     'get_list: under 500ms': (r) => r.timings.duration < 500,
   });
-  sleep(1);
 
   // GET /orders/:id
+  sleep(SLEEP_BETWEEN_REQUESTS);
   if (orderId) {
-    const byIdRes = http.get(`${base}/orders/${orderId}`, params('order.get_by_id'));
+    const byIdRes = http.get(`${base}/orders/${orderId}`, params('orders.get_by_id'));
     check(byIdRes, {
       'get_by_id: status 200':   (r) => r.status === 200,
       'get_by_id: has order_id': (r) => !!JSON.parse(r.body).order_id,
       'get_by_id: under 500ms':  (r) => r.timings.duration < 500,
     });
   }
-  sleep(1);
 
   // GET /orders/:id/payment-update-link
+  sleep(SLEEP_BETWEEN_REQUESTS);
   if (orderId) {
     const linkRes = http.get(
       `${base}/orders/${orderId}/payment-update-link`,
-      params('order.get_payment_update_link')
+      params('orders.get_payment_update_link')
     );
     check(linkRes, {
       'payment_update_link: status 200':  (r) => r.status === 200,
       'payment_update_link: under 800ms': (r) => r.timings.duration < 800,
     });
   }
-  sleep(1);
 
   // GET /orders/:id/payment-details
+  sleep(SLEEP_BETWEEN_REQUESTS);
   if (orderId) {
     const detailsRes = http.get(
       `${base}/orders/${orderId}/payment-details`,
-      params('order.get_payment_details')
+      params('orders.get_payment_details')
     );
     check(detailsRes, {
       'payment_details: status 200':  (r) => r.status === 200,
       'payment_details: under 800ms': (r) => r.timings.duration < 800,
     });
   }
-  sleep(1);
 
   // GET /orders — with explicit filter params
+  sleep(SLEEP_BETWEEN_REQUESTS);
   const filterRes = http.get(
     `${base}/orders?page=1&per_page=100&sort=created_at&desc=true`,
-    params('order.get_by_filter')
+    params('orders.get_by_filter')
   );
   check(filterRes, {
     'get_by_filter: status 200':  (r) => r.status === 200,
     'get_by_filter: has data':    (r) => Array.isArray(JSON.parse(r.body).data),
     'get_by_filter: under 500ms': (r) => r.timings.duration < 500,
   });
-  sleep(1);
 
   // GET /orders?search=:orderId
+  sleep(SLEEP_BETWEEN_REQUESTS);
   if (orderId) {
     const searchRes = http.get(
       `${base}/orders?search=${orderId}&sort=created_at&desc=true`,
-      params('order.get_by_search')
+      params('orders.get_by_search')
     );
     check(searchRes, {
       'get_by_search: status 200':  (r) => r.status === 200,
@@ -167,7 +178,6 @@ export default function ({ orderId }) {
       'get_by_search: under 500ms': (r) => r.timings.duration < 500,
     });
   }
-  sleep(1);
 }
 
 export function teardown({ orderId }) {
@@ -175,15 +185,16 @@ export function teardown({ orderId }) {
 }
 
 const REPORT_CONFIG = {
-  title: 'Orders Load Test Report',
+  title:    'Orders Load Test Report',
   subtitle: '100 VUs · 8 min',
+  module:   'orders',
   endpoints: [
-    { tag: 'order.get_list',                label: 'GET /orders (list)',                   p95limit: 500 },
-    { tag: 'order.get_by_id',               label: 'GET /orders/:id',                      p95limit: 500 },
-    { tag: 'order.get_payment_update_link', label: 'GET /orders/:id/payment-update-link',  p95limit: 800 },
-    { tag: 'order.get_payment_details',     label: 'GET /orders/:id/payment-details',      p95limit: 800 },
-    { tag: 'order.get_by_filter',           label: 'GET /orders (filter)',                 p95limit: 500 },
-    { tag: 'order.get_by_search',           label: 'GET /orders?search=:id',               p95limit: 500 },
+    { tag: 'orders.get_list',                label: 'GET /orders (list)',                   p95limit: 500 },
+    { tag: 'orders.get_by_id',               label: 'GET /orders/:id',                      p95limit: 500 },
+    { tag: 'orders.get_payment_update_link', label: 'GET /orders/:id/payment-update-link',  p95limit: 800 },
+    { tag: 'orders.get_payment_details',     label: 'GET /orders/:id/payment-details',      p95limit: 800 },
+    { tag: 'orders.get_by_filter',           label: 'GET /orders (filter)',                 p95limit: 500 },
+    { tag: 'orders.get_by_search',           label: 'GET /orders?search=:id',               p95limit: 500 },
   ],
 };
 

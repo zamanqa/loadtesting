@@ -3,15 +3,16 @@
  *
  * Usage in any test file:
  *
- *   import { buildHtmlReport, ms, pct, getMetric, passed } from '../../support/helpers/report.js';
+ *   import { buildHtmlReport } from '../../support/helpers/report.js';
  *
  *   export function handleSummary(data) {
  *     return {
  *       'cypress/e2e/load/reports/my-report.html': buildHtmlReport(data, {
- *         title: 'My Load Test Report',
+ *         title:    'My Load Test Report',
  *         subtitle: '100 VUs · 8 min',
+ *         module:   'orders',           // optional — enables the module group summary bar
  *         endpoints: [
- *           { tag: 'my.endpoint', label: 'GET /my-endpoint', p95limit: 500 },
+ *           { tag: 'orders.get_list', label: 'GET /orders (list)', p95limit: 500 },
  *         ],
  *       }),
  *       stdout: textSummary(data, { indent: '  ', enableColors: true }),
@@ -27,6 +28,10 @@ export function pct(val) {
   return val != null ? `${(val * 100).toFixed(1)}%` : '—';
 }
 
+export function rps(val) {
+  return val != null ? `${val.toFixed(1)} req/s` : '—';
+}
+
 export function getMetric(data, key) {
   return data.metrics[key] ? data.metrics[key].values : null;
 }
@@ -37,15 +42,19 @@ export function passed(data, key) {
 }
 
 /**
- * Generates a self-contained HTML report.
+ * Generates a self-contained HTML report with three result levels:
+ *   1. Global summary bar    — overall pass/fail, total requests, error rate, p95
+ *   2. Module group summary  — aggregate p95/p99/error rate/RPS across all endpoints
+ *   3. Per-endpoint cards    — individual metrics including check pass rate and RPS
  *
  * @param {object} data      - The k6 summary data object from handleSummary
  * @param {object} config
  * @param {string} config.title      - Report page title and heading
  * @param {string} config.subtitle   - Shown under the heading (VUs, duration, etc.)
+ * @param {string} [config.module]   - Module tag name, e.g. 'orders'. Enables the group summary section.
  * @param {Array}  config.endpoints  - List of { tag, label, p95limit } objects
  */
-export function buildHtmlReport(data, { title, subtitle, endpoints }) {
+export function buildHtmlReport(data, { title, subtitle, module: moduleName, endpoints }) {
   const runAt      = new Date().toUTCString();
   const globalDur  = getMetric(data, 'http_req_duration');
   const globalFail = getMetric(data, 'http_req_failed');
@@ -64,13 +73,56 @@ export function buildHtmlReport(data, { title, subtitle, endpoints }) {
     }
   });
 
+  // Module group summary — only rendered when `module` is provided in the config
+  let moduleSummaryHtml = '';
+  if (moduleName) {
+    const modDur  = getMetric(data, `http_req_duration{module:${moduleName}}`);
+    const modFail = getMetric(data, `http_req_failed{module:${moduleName}}`);
+    const modReqs = getMetric(data, `http_reqs{module:${moduleName}}`);
+    const modP95  = modDur ? modDur['p(95)'] : null;
+    const modP99  = modDur ? modDur['p(99)'] : null;
+    const modErr  = modFail ? modFail.rate : null;
+    const modRps  = modReqs ? modReqs.rate : null;
+
+    moduleSummaryHtml = `
+  <div class="module-summary">
+    <div class="module-summary-title">Module group: <code>${moduleName}</code></div>
+    <div class="module-summary-stats">
+      <span class="mod-stat">
+        <span class="mod-label">p95</span>
+        <span class="mod-value ${modP95 != null && modP95 < 500 ? 'good' : 'bad'}">${ms(modP95)}</span>
+      </span>
+      <span class="mod-sep">·</span>
+      <span class="mod-stat">
+        <span class="mod-label">p99</span>
+        <span class="mod-value ${modP99 != null && modP99 < 1000 ? 'good' : 'bad'}">${ms(modP99)}</span>
+      </span>
+      <span class="mod-sep">·</span>
+      <span class="mod-stat">
+        <span class="mod-label">Error rate</span>
+        <span class="mod-value ${modErr != null && modErr > 0.01 ? 'bad' : 'good'}">${pct(modErr)}</span>
+      </span>
+      <span class="mod-sep">·</span>
+      <span class="mod-stat">
+        <span class="mod-label">Throughput</span>
+        <span class="mod-value">${rps(modRps)}</span>
+      </span>
+    </div>
+  </div>`;
+  }
+
+  // Per-endpoint cards
   const cards = endpoints.map(({ tag, label, p95limit }) => {
-    const dur    = getMetric(data, `http_req_duration{endpoint:${tag}}`);
-    const fail   = getMetric(data, `http_req_failed{endpoint:${tag}}`);
-    const reqs   = getMetric(data, `http_reqs{endpoint:${tag}}`);
-    const ok     = passed(data, `http_req_duration{endpoint:${tag}}`);
-    const p95Val = dur ? dur['p(95)'] : null;
-    const skipped = !dur;
+    const dur      = getMetric(data, `http_req_duration{endpoint:${tag}}`);
+    const fail     = getMetric(data, `http_req_failed{endpoint:${tag}}`);
+    const reqs     = getMetric(data, `http_reqs{endpoint:${tag}}`);
+    const chks     = getMetric(data, `checks{endpoint:${tag}}`);
+    const ok       = passed(data, `http_req_duration{endpoint:${tag}}`);
+    const p95Val   = dur ? dur['p(95)'] : null;
+    const p99Val   = dur ? dur['p(99)'] : null;
+    const checkRate = chks ? chks.rate : null;
+    const endpointRps = reqs ? reqs.rate : null;
+    const skipped  = !dur;
 
     const badge = skipped
       ? `<span class="badge skip">SKIPPED</span>`
@@ -79,6 +131,9 @@ export function buildHtmlReport(data, { title, subtitle, endpoints }) {
         : `<span class="badge pass">✅ PASS</span>`;
 
     const p95Class = p95Val != null ? (p95Val < p95limit ? 'good' : 'bad') : '';
+    const p99limit = Math.round(p95limit * 2);
+    const p99Class = p99Val != null ? (p99Val < p99limit ? 'good' : 'bad') : '';
+    const checkClass = checkRate != null ? (checkRate >= 0.95 ? 'good' : 'bad') : '';
 
     return `
     <div class="card ${skipped ? 'skipped' : ok === false ? 'failed' : 'passed'}">
@@ -87,19 +142,21 @@ export function buildHtmlReport(data, { title, subtitle, endpoints }) {
         ${badge}
       </div>
       <div class="card-meta">
-        Tag: <code>${tag}</code> &nbsp;·&nbsp; p95 limit: <code>${p95limit} ms</code>
+        Tag: <code>${tag}</code> &nbsp;·&nbsp; p95 limit: <code>${p95limit} ms</code> &nbsp;·&nbsp; p99 limit: <code>${p99limit} ms</code>
       </div>
       ${skipped
         ? `<p class="skip-note">Not called — required data was unavailable.</p>`
         : `<table class="metrics-table">
           <tr><th>Metric</th><th>Value</th></tr>
           <tr><td>Total requests</td><td>${reqs ? Math.round(reqs.count || 0).toLocaleString() : '—'}</td></tr>
+          <tr><td>Throughput</td><td>${rps(endpointRps)}</td></tr>
           <tr><td>Error rate</td><td class="${fail && fail.rate > 0.01 ? 'bad' : 'good'}">${pct(fail ? fail.rate : null)}</td></tr>
+          <tr><td>Check pass rate</td><td class="${checkClass}">${pct(checkRate)}</td></tr>
           <tr><td>avg</td><td>${ms(dur ? dur.avg : null)}</td></tr>
           <tr><td>min</td><td>${ms(dur ? dur.min : null)}</td></tr>
           <tr><td>p50</td><td>${ms(dur ? dur.med : null)}</td></tr>
           <tr><td class="${p95Class}">p95</td><td class="${p95Class}">${ms(p95Val)}</td></tr>
-          <tr><td>p99</td><td>${ms(dur ? dur['p(99)'] : null)}</td></tr>
+          <tr><td class="${p99Class}">p99</td><td class="${p99Class}">${ms(p99Val)}</td></tr>
           <tr><td>max</td><td>${ms(dur ? dur.max : null)}</td></tr>
         </table>`}
     </div>`;
@@ -124,8 +181,16 @@ export function buildHtmlReport(data, { title, subtitle, endpoints }) {
     .result-badge { font-size: 1rem; font-weight: 700; padding: 6px 18px; border-radius: 6px; display: inline-block; }
     .result-pass { background: #d4edda; color: #155724; }
     .result-fail { background: #f8d7da; color: #721c24; }
+    .module-summary { margin: 20px 40px 0; background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 8px; padding: 14px 20px; }
+    .module-summary-title { font-size: 0.78rem; color: #4338ca; font-weight: 600; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .module-summary-title code { background: #c7d2fe; padding: 1px 6px; border-radius: 3px; font-size: 0.76rem; }
+    .module-summary-stats { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .mod-stat { display: flex; flex-direction: column; align-items: center; min-width: 80px; background: #fff; border-radius: 6px; padding: 8px 14px; }
+    .mod-label { font-size: 0.68rem; color: #888; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 2px; }
+    .mod-value { font-size: 1rem; font-weight: 700; }
+    .mod-sep { color: #a5b4fc; font-size: 1.2rem; }
     .slowest { margin: 16px 40px 0; background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 12px 20px; font-size: 0.88rem; color: #856404; }
-    .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 20px; padding: 24px 40px; }
+    .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 20px; padding: 24px 40px; }
     .card { background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); overflow: hidden; border-top: 4px solid #adb5bd; }
     .card.passed { border-top-color: #28a745; }
     .card.failed { border-top-color: #dc3545; }
@@ -180,6 +245,8 @@ export function buildHtmlReport(data, { title, subtitle, endpoints }) {
       <div class="value">${ms(globalDur ? globalDur.avg : null)}</div>
     </div>
   </div>
+
+  ${moduleSummaryHtml}
 
   ${slowestTag ? `
   <div class="slowest">
