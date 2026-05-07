@@ -337,6 +337,7 @@ function handleK6Run(req, res) {
   let lineBuffer        = '';
   let thresholdsPassed  = 0;
   let thresholdsFailed  = 0;
+  const thresholdDetails = [];   // collect per-threshold results for PDF
   const startTime       = Date.now();
 
   const processLine = (rawLine) => {
@@ -356,6 +357,7 @@ function handleK6Run(req, res) {
         thresholdsFailed++;
         send({ status: 'threshold', passed: false, metric: th.metric, tag: th.tag });
       }
+      thresholdDetails.push({ metric: th.metric, tag: th.tag, passed: th.passed });
     }
   };
 
@@ -403,10 +405,11 @@ function handleK6Run(req, res) {
         thresholdsFailed,
         total,
         durationSec,
+        thresholds:       thresholdDetails,   // full per-threshold detail for PDF
       };
       fs.writeFileSync(path.join(HISTORY_DIR, fname), JSON.stringify(record, null, 2));
       console.log(`[${ts()}] 💾  Run history saved: ${fname}`);
-      pruneRunHistory(30);
+      pruneRunHistory(5);   // keep only last 5 reports
     } catch (e) {
       console.error('Could not save run history:', e.message);
     }
@@ -431,6 +434,172 @@ function handleK6Run(req, res) {
   });
 }
 
+// ── PDF report generator ──────────────────────────────────────────────────────
+function esc(s) {
+  return String(s || '')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function generatePdfHtml(record) {
+  const {
+    label = '', script = '', time = '', ok = false,
+    thresholdsPassed = 0, thresholdsFailed = 0, total = 0,
+    durationSec = 0, thresholds = [],
+  } = record;
+
+  const passRate = total > 0 ? ((thresholdsPassed / total) * 100).toFixed(1) : '0.0';
+
+  // Group threshold rows by endpoint tag prefix (e.g. "orders.get_list")
+  // One logical row per tag, columns: tag | duration p95/p99 | failed rate | checks
+  const byTag = {};
+  for (const t of thresholds) {
+    const tag = t.tag || t.metric;
+    if (!byTag[tag]) byTag[tag] = { tag, items: [] };
+    byTag[tag].items.push(t);
+  }
+  // Also keep ungrouped metrics (no ep: tag)
+  const ungrouped = thresholds.filter(t => !t.tag);
+
+  const tagRows = Object.values(byTag).map(({ tag, items }) => {
+    const allPass = items.every(i => i.passed);
+    const metrics = items.map(i => {
+      const mname = i.metric.replace(/\{[^}]+\}/g, '');
+      return `<span class="chip ${i.passed ? 'green' : 'red'}">${esc(mname)}</span>`;
+    }).join('');
+    return `<tr>
+      <td class="tag-cell">${esc(tag)}</td>
+      <td>${metrics}</td>
+      <td class="${allPass ? 'pass-cell' : 'fail-cell'}">${allPass ? '✓ PASS' : '✗ FAIL'}</td>
+    </tr>`;
+  }).join('');
+
+  const ungroupedRows = ungrouped.map(t => `<tr>
+    <td class="tag-cell" colspan="2" style="color:#64748b;font-size:0.78rem;">${esc(t.metric)}</td>
+    <td class="${t.passed ? 'pass-cell' : 'fail-cell'}">${t.passed ? '✓' : '✗'}</td>
+  </tr>`).join('');
+
+  const durLabel = durationSec < 60 ? `${durationSec}s`
+    : durationSec < 3600 ? `${Math.round(durationSec/60)} min`
+    : `${(durationSec/3600).toFixed(1)} hr`;
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>k6 Report — ${esc(label)}</title>
+<style>
+  @page { margin: 18mm 16mm; }
+  @media print {
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .no-print { display: none !important; }
+    .page-break { page-break-before: always; }
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #fff; color: #1e293b; font-size: 13px; line-height: 1.5; }
+
+  /* ── Header ── */
+  .report-header { background: #1a1b2e; color: #fff; padding: 28px 36px; display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; }
+  .report-header h1 { font-size: 1.3rem; font-weight: 700; letter-spacing: -0.3px; margin-bottom: 4px; }
+  .report-header .sub { font-size: 0.78rem; color: #a5b4fc; }
+  .badge-result { padding: 6px 18px; border-radius: 8px; font-size: 0.9rem; font-weight: 700; white-space: nowrap; }
+  .badge-pass { background: #14532d; color: #4ade80; border: 1px solid #166534; }
+  .badge-fail { background: #450a0a; color: #f87171; border: 1px solid #7f1d1d; }
+
+  /* ── Summary cards ── */
+  .summary { display: flex; gap: 16px; padding: 24px 36px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; flex-wrap: wrap; }
+  .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 22px; min-width: 120px; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+  .card .num { font-size: 1.8rem; font-weight: 700; color: #4f46e5; }
+  .card .num.green { color: #16a34a; }
+  .card .num.red   { color: #dc2626; }
+  .card .lbl { font-size: 0.68rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.7px; margin-top: 3px; }
+
+  /* ── Section ── */
+  .section { padding: 24px 36px; }
+  .section h2 { font-size: 0.88rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #475569; margin-bottom: 14px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; }
+
+  /* ── Table ── */
+  table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  th { text-align: left; padding: 9px 14px; background: #f1f5f9; color: #475569; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.6px; border-bottom: 2px solid #e2e8f0; font-weight: 600; }
+  td { padding: 8px 14px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #f8fafc; }
+  .tag-cell { font-family: 'Consolas', monospace; color: #4f46e5; font-size: 0.78rem; }
+  .pass-cell { color: #16a34a; font-weight: 700; white-space: nowrap; }
+  .fail-cell { color: #dc2626; font-weight: 700; white-space: nowrap; }
+  .chip { display: inline-block; font-size: 0.68rem; padding: 2px 7px; border-radius: 4px; margin: 1px; font-family: monospace; white-space: nowrap; }
+  .chip.green { background: #dcfce7; color: #15803d; }
+  .chip.red   { background: #fee2e2; color: #b91c1c; }
+
+  /* ── Footer ── */
+  .report-footer { padding: 16px 36px; background: #f8fafc; border-top: 1px solid #e2e8f0; font-size: 0.72rem; color: #94a3b8; display: flex; justify-content: space-between; }
+
+  /* ── Print button ── */
+  .print-btn { position: fixed; bottom: 24px; right: 24px; background: #4f46e5; color: #fff; border: none; padding: 12px 22px; border-radius: 10px; font-size: 0.86rem; font-weight: 600; cursor: pointer; box-shadow: 0 4px 16px rgba(79,70,229,0.35); }
+  .print-btn:hover { background: #4338ca; }
+</style>
+</head>
+<body>
+
+<div class="report-header">
+  <div>
+    <div style="font-size:0.72rem;color:#818cf8;font-weight:600;margin-bottom:6px;letter-spacing:1px;">K6 LOAD TEST REPORT</div>
+    <h1>${esc(label)}</h1>
+    <div class="sub">Script: <code style="color:#e0e7ff;">${esc(script)}</code> &nbsp;·&nbsp; ${esc(time)}</div>
+  </div>
+  <div class="badge-result ${ok ? 'badge-pass' : 'badge-fail'}">${ok ? '✓ PASSED' : '✗ FAILED'}</div>
+</div>
+
+<div class="summary">
+  <div class="card"><div class="num">${esc(durLabel)}</div><div class="lbl">Duration</div></div>
+  <div class="card"><div class="num">${total}</div><div class="lbl">Thresholds</div></div>
+  <div class="card"><div class="num green">${thresholdsPassed}</div><div class="lbl">Passed</div></div>
+  <div class="card"><div class="num red">${thresholdsFailed}</div><div class="lbl">Failed</div></div>
+  <div class="card"><div class="num ${ok ? 'green' : 'red'}">${passRate}%</div><div class="lbl">Pass Rate</div></div>
+  <div class="card"><div class="num">${esc(record.vus || '—')}</div><div class="lbl">Max VUs</div></div>
+</div>
+
+${Object.keys(byTag).length > 0 ? `
+<div class="section">
+  <h2>Threshold Results — Per Endpoint</h2>
+  <table>
+    <thead><tr><th>Endpoint Tag</th><th>Metrics</th><th>Result</th></tr></thead>
+    <tbody>${tagRows}</tbody>
+  </table>
+</div>` : ''}
+
+${ungrouped.length > 0 ? `
+<div class="section">
+  <h2>Global Thresholds</h2>
+  <table>
+    <thead><tr><th colspan="2">Metric</th><th>Result</th></tr></thead>
+    <tbody>${ungroupedRows}</tbody>
+  </table>
+</div>` : ''}
+
+<div class="report-footer">
+  <span>k6 Load Test Dashboard · Circuly API v2026-04</span>
+  <span>Generated ${new Date().toLocaleString()}</span>
+</div>
+
+<button class="print-btn no-print" onclick="window.print()">⬇ Save as PDF</button>
+
+</body>
+</html>`;
+}
+
+function handleReportPdf(req, res) {
+  const { file } = url.parse(req.url, true).query;
+  if (!file || file.includes('..')) { res.writeHead(400); res.end('Bad file'); return; }
+  try {
+    const record = JSON.parse(fs.readFileSync(path.join(HISTORY_DIR, file), 'utf8'));
+    const html   = generatePdfHtml(record);
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    res.end(html);
+  } catch (e) {
+    res.writeHead(404); res.end('Report not found: ' + e.message);
+  }
+}
+
 // ── HTTP server ───────────────────────────────────────────────────────────────
 const server = http.createServer((req, res) => {
   setCors(res);
@@ -443,9 +612,10 @@ const server = http.createServer((req, res) => {
   if (pathname === '/meta'          && req.method === 'GET')    return handleMeta(res);
   if (pathname === '/run'           && req.method === 'GET')    return handleK6Run(req, res);
   if (pathname === '/stop'          && req.method === 'POST')   return handleStop(res);
-  if (pathname === '/reports'       && req.method === 'GET')    return handleReportsList(res);
-  if (pathname === '/reports/get'   && req.method === 'GET')    return handleReportGet(req, res);
-  if (pathname === '/reports/delete'&& req.method === 'POST')   return handleReportsDelete(req, res);
+  if (pathname === '/reports'        && req.method === 'GET')   return handleReportsList(res);
+  if (pathname === '/reports/get'    && req.method === 'GET')   return handleReportGet(req, res);
+  if (pathname === '/reports/pdf'    && req.method === 'GET')   return handleReportPdf(req, res);
+  if (pathname === '/reports/delete' && req.method === 'POST')  return handleReportsDelete(req, res);
 
   res.writeHead(404, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify({ ok: false, error: 'Not found' }));

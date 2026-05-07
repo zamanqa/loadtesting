@@ -741,15 +741,22 @@ function loadReports() {
       card.dataset.file = rpt.file || '';
       const sf = (rpt.file || '').replace(/'/g, "\\'");
       const ok = rpt.ok !== false;
+      const pdfUrl = `${SERVER}/reports/pdf?file=${encodeURIComponent(rpt.file || '')}`;
       card.innerHTML = `
         <div class="rc-check" onclick="event.stopPropagation();toggleSelect(this.parentElement)"></div>
         <div class="rc-title">${escHtml(rpt.label || rpt.file || 'Run ' + (i+1))}</div>
-        <div class="rc-time">${escHtml(rpt.time || '')}</div>
-        <div class="rc-stats">
+        <div class="rc-time">${escHtml(rpt.time || '')} · ${rpt.durationSec || 0}s</div>
+        <div class="rc-stats" style="margin-bottom:10px;">
           <span style="color:${ok ? '#4ade80' : '#f87171'};font-weight:700;">${ok ? '✓ PASSED' : '✗ FAILED'}</span>
-          <span class="rc-pass">${rpt.thresholdsPassed || 0} thresholds passed</span>
-          <span class="rc-fail">${rpt.thresholdsFailed || 0} failed</span>
-        </div>`;
+          <span class="rc-pass">✓ ${rpt.thresholdsPassed || 0}</span>
+          <span class="rc-fail">✗ ${rpt.thresholdsFailed || 0}</span>
+        </div>
+        <a href="${pdfUrl}" target="_blank" onclick="event.stopPropagation()"
+           style="display:inline-flex;align-items:center;gap:5px;font-size:0.72rem;font-weight:600;
+                  color:#a5b4fc;text-decoration:none;padding:4px 10px;border:1px solid #353860;
+                  border-radius:6px;background:#1e2040;">
+          ⬇ PDF Report
+        </a>`;
       grid.appendChild(card);
     });
   }).catch(err => {
