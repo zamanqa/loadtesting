@@ -43,9 +43,9 @@ export const options = {
       executor: 'ramping-vus',
       startVUs: 0,
       stages: [
-        { duration: '20s', target: 10 }, // ramp up
-        { duration: '20s', target: 10 }, // hold at normal traffic
-        { duration: '20s', target: 0 },   // ramp down
+        { duration: '10s', target: 10 }, // ramp up
+        { duration: '10s', target: 10 }, // hold at normal traffic
+        { duration: '10s', target: 0 },   // ramp down
       ],
       tags: { scenario: 'load' },
     },
@@ -65,18 +65,18 @@ export function setup() {
 
   let orderId = null;
 
-  if (res.status === 200) {
-    const body = JSON.parse(res.body);
-    orderId = body.data && body.data.length > 0 ? body.data[0].order_id : null;
-
-    if (orderId) {
-      console.log(`Using orderId: ${orderId}`);
-    } else {
-      console.warn('No orders found — endpoints that need an orderId will be skipped');
-    }
-  } else {
-    console.error(`Could not fetch orders in setup (HTTP ${res.status})`);
+  if (res.status !== 200) {
+    throw new Error(`Could not fetch orders in setup (HTTP ${res.status}): ${res.body}`);
   }
+
+  const body = JSON.parse(res.body);
+  orderId = body.data && body.data.length > 0 ? body.data[0].id : null;
+
+  if (!orderId) {
+    throw new Error('No orders found in the database — cannot run test without a valid orderId');
+  }
+
+  console.log(`[setup] Using orderId: ${orderId}`);
 
   return { orderId };
 }
@@ -117,7 +117,7 @@ export default function ({ orderId }) {
     const byIdRes = k6.http.get(`${base}/orders/${orderId}`, params('orders.get_by_id'));
     k6.check(byIdRes, {
       'get_by_id: status 200':   (r) => r.status === 200,
-      'get_by_id: has order_id': (r) => { try { return !!JSON.parse(r.body).order_id; } catch { return false; } },
+      'get_by_id: has id':       (r) => { try { return !!JSON.parse(r.body).id; }       catch { return false; } },
       'get_by_id: under 500ms':  (r) => r.timings.duration < 500,
     });
   }
