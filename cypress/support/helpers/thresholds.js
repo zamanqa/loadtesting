@@ -33,16 +33,22 @@
  * @returns {object} A k6-compatible thresholds object
  */
 export function buildThresholds(module, endpoints) {
+  // Derive limits from the slowest endpoint so global and module thresholds
+  // never fire just because one module (e.g. auth) has a higher budget than 500ms.
+  const maxP95 = Math.max(...endpoints.map((e) => e.p95));
+  const maxP99 = Math.max(...endpoints.map((e) => e.p99 ?? Math.round(e.p95 * 2)));
+
   const thresholds = {
     // ── Level 1: Global ──────────────────────────────────────────────────────
-    // These catch any request not explicitly tagged with an endpoint or module.
-    http_req_duration: ['p(95)<500'],
+    // Uses the slowest endpoint's limit so a high-budget module (e.g. auth at
+    // 800ms) doesn't trip the global gate that was meant for fast read endpoints.
+    http_req_duration: [`p(95)<${maxP95}`],
     http_req_failed:   ['rate<0.01'],
 
     // ── Level 2: Module group ─────────────────────────────────────────────────
     // All requests tagged { module: '<module>' } are aggregated here.
-    // This gives a single "how did the whole orders suite do?" view.
-    [`http_req_duration{module:${module}}`]: ['p(95)<500', 'p(99)<1000'],
+    // This gives a single "how did the whole module do?" view.
+    [`http_req_duration{module:${module}}`]: [`p(95)<${maxP95}`, `p(99)<${maxP99}`],
     [`http_req_failed{module:${module}}`]:   ['rate<0.01'],
     [`http_reqs{module:${module}}`]:         ['rate>1'],  // sanity check: confirms load is actually running
   };
