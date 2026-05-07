@@ -5,6 +5,8 @@
   "private": true,
   "scripts": {
     "dashboard": "node cypress/docs/sync-server.js",
+    "preall:smoke": "node -e \"require('fs').mkdirSync('cypress/e2e/smoke/reports',{recursive:true})\"",
+    "all:smoke": "dotenv -- k6 run cypress/e2e/smoke/all-modules.smoke.test.js",
     "preall:load": "node -e \"require('fs').mkdirSync('cypress/e2e/load/reports',{recursive:true})\"",
     "all:load": "dotenv -- k6 run cypress/e2e/load/all-modules.load.test.js",
     "prelogin:load": "node -e \"require('fs').mkdirSync('cypress/e2e/load/reports',{recursive:true})\"",
