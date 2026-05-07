@@ -261,30 +261,28 @@ function handleStop(res) {
 // ── k6 threshold line parser ──────────────────────────────────────────────────
 /**
  * Parse a stripped k6 output line.
- * Returns { passed: bool, tag: string } when the line is a threshold result,
- * or null otherwise.
+ * Returns { passed: bool, tag: string } when the line is a threshold result
+ * for an ep-tagged metric, or null otherwise.
  *
- * k6 threshold lines look like one of:
- *   ✓ http_req_duration{ep:orders.get_list}............: avg=...
- *   ✗ http_req_failed{ep:orders.get_list}..............: rate=...
- *   ✓ checks{ep:orders.get_list}......................: rate=...
- *   ✓ http_req_duration{module:orders}................: ...
+ * k6 textSummary prints tagged sub-group lines as INDENTED rows, e.g.:
+ *   "  ✓ { ep:orders.get_list }............: avg=342ms …"
+ *   "  ✗ { ep:orders.get_by_id }..........: 0.00%  ✓ 0  ✗ 3"
+ *   "  ✓ { module:orders }................: avg=713ms …"  ← skipped (no ep:)
+ *
+ * After stripAnsi + trim() the leading spaces are gone, leaving:
+ *   "✓ { ep:orders.get_list }............: …"
  */
 function parseThresholdLine(line) {
   const trimmed = line.trim();
 
-  // Match lines starting with ✓ or ✗ that contain a k6 metric name
-  const m = trimmed.match(/^([✓✗])\s+([\w_]+\{[^}]+\}|[\w_]+)\s*[.:]/);
+  // Match "✓ { ep:<tag> }" — the actual k6 textSummary sub-group format
+  const m = trimmed.match(/^([✓✗])\s+\{\s*ep:([^}]+?)\s*\}/);
   if (!m) return null;
 
   const passed = m[1] === '✓';
-  const metric = m[2]; // e.g. "http_req_duration{ep:orders.get_list}"
+  const tag    = m[2].trim();   // e.g. "orders.get_list"
 
-  // Extract the tag value from inside {}
-  const tagMatch = metric.match(/\{ep:([^}]+)\}/);
-  const tag = tagMatch ? tagMatch[1] : null;
-
-  return { passed, metric, tag };
+  return { passed, metric: `{ep:${tag}}`, tag };
 }
 
 // ── /run?script=X  (SSE stream) ───────────────────────────────────────────────

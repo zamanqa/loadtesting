@@ -545,8 +545,12 @@ function handleEvent(data, mod, btn) {
   if (data.status === 'log') {
     const line = data.text || '';
     renderLogLine(line);
-    parseThresholdLine(line, mod);
     updateProgress(line);
+  }
+
+  // Server has already parsed the threshold line and sends a clean event
+  if (data.status === 'threshold') {
+    applyThresholdResult(data.tag, data.passed);
   }
 
   if (data.status === 'done') {
@@ -573,37 +577,35 @@ function renderLogLine(line) {
   appendLog(l, '');
 }
 
-function parseThresholdLine(line, mod) {
-  // k6 summary lines look like:
-  //   ✓ http_req_duration{ep:orders.get_list}.........: avg=342ms … p(95)=876ms
-  //   ✗ checks{ep:orders.get_by_id}...................: 94.12% ✓ 32 ✗ 2
-  //   ✓ http_req_failed{ep:orders.get_list}...........: 0.00% ✓ 0 ✗ 0
-  const m = line.match(/([✓✗])\s+[\w_]+\{ep:([^}]+)\}/);
-  if (!m) return;
+/**
+ * Apply a parsed threshold result from the server's `threshold` SSE event.
+ * tag    — endpoint tag, e.g. "orders.get_list"
+ * passed — true if the threshold line started with ✓
+ *
+ * A tag has multiple threshold lines (p90, p95, error-rate, checks).
+ * One ✗ permanently marks the endpoint failed — matches k6 semantics.
+ */
+function applyThresholdResult(tag, passed) {
+  if (!tag) return;
 
-  const linePass = m[1] === '✓';
-  const tag      = m[2].trim();
-
-  // A tag has multiple threshold lines (p90, p95, error-rate, checks).
-  // Mark fail if ANY line is a fail; only mark pass when no fail seen yet.
-  if (linePass) {
+  if (passed) {
     if (!(tag in thresholdResults)) thresholdResults[tag] = 'pass';
-    // leave 'fail' intact if already set
+    // leave 'fail' intact if already set by an earlier line
   } else {
-    thresholdResults[tag] = 'fail';  // one fail overrides everything
+    thresholdResults[tag] = 'fail';
   }
 
-  const finalState = thresholdResults[tag];
-  // Update every tab that contains this endpoint tag (all-modules + individual module)
+  const state = thresholdResults[tag];
+  // Update every tab that contains this endpoint tag (All Modules + individual)
   document.querySelectorAll(`[data-ep-tag="${tag}"]`).forEach(el => {
-    el.className = 'ep-result ' + finalState;
-    el.textContent = finalState === 'pass' ? '✓ Pass' : '✗ Fail';
+    el.className  = 'ep-result ' + state;
+    el.textContent = state === 'pass' ? '✓ Pass' : '✗ Fail';
   });
 
-  // Update stats counters
-  const allTags = Object.keys(thresholdResults);
-  const passed2 = allTags.filter(t => thresholdResults[t] === 'pass').length;
-  const failed2 = allTags.filter(t => thresholdResults[t] === 'fail').length;
+  // Refresh stat counters
+  const tags    = Object.keys(thresholdResults);
+  const passed2 = tags.filter(t => thresholdResults[t] === 'pass').length;
+  const failed2 = tags.filter(t => thresholdResults[t] === 'fail').length;
   document.getElementById('statPassed').textContent = passed2;
   document.getElementById('statFailed').textContent = failed2;
 }
