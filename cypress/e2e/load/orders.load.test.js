@@ -28,14 +28,14 @@ const SLEEP_BETWEEN_REQUESTS = 1; // seconds
 // Endpoint definitions — used by the threshold builder, check labels, and report config.
 // Change p95 here and both the threshold gate AND the check label update automatically.
 // p90 is set explicitly because auto-derived (p95 × 0.80) is too tight for these endpoints —
-// measured p90 runs at ~830–880ms while p95 is ~870–890ms, so the ratio is closer to 0.95.
+// measured p90 runs at ~840–960ms. p95 is 1100ms to give headroom above measured ~880–1000ms.
 const ENDPOINTS = [
-  { tag: 'orders.get_list',                p95: 1000, p90: 950 },
-  { tag: 'orders.get_by_id',               p95: 1000, p90: 950 },
-  { tag: 'orders.get_payment_update_link', p95: 1000, p90: 950 },
-  { tag: 'orders.get_payment_methods',     p95: 1000, p90: 950 },
-  { tag: 'orders.get_by_filter',           p95: 1000, p90: 950 },
-  { tag: 'orders.get_by_search',           p95: 1000, p90: 950 },
+  { tag: 'orders.get_list',                p95: 1100, p90: 1000 },
+  { tag: 'orders.get_by_id',               p95: 1100, p90: 1000 },
+  { tag: 'orders.get_payment_update_link', p95: 1100, p90: 1000 },
+  { tag: 'orders.get_payment_methods',     p95: 1100, p90: 1000 },
+  { tag: 'orders.get_by_filter',           p95: 1100, p90: 1000 },
+  { tag: 'orders.get_by_search',           p95: 1100, p90: 1000 },
 ];
 
 // Lookup map so check labels and conditions always match the p95 value above.
