@@ -338,6 +338,7 @@ function handleK6Run(req, res) {
   let thresholdsPassed  = 0;
   let thresholdsFailed  = 0;
   const thresholdDetails = [];   // collect per-threshold results for PDF
+  const logLines         = [];   // raw terminal lines for PDF (capped at 3000)
   const startTime       = Date.now();
 
   const processLine = (rawLine) => {
@@ -346,6 +347,7 @@ function handleK6Run(req, res) {
 
     // Emit the log line to the browser
     send({ status: 'log', text: line + '\n' });
+    if (logLines.length < 3000) logLines.push(line);
 
     // Parse threshold results
     const th = parseThresholdLine(line);
@@ -406,6 +408,7 @@ function handleK6Run(req, res) {
         total,
         durationSec,
         thresholds:       thresholdDetails,   // full per-threshold detail for PDF
+        logLines,                             // raw terminal output for PDF
       };
       fs.writeFileSync(path.join(HISTORY_DIR, fname), JSON.stringify(record, null, 2));
       console.log(`[${ts()}] 💾  Run history saved: ${fname}`);
@@ -444,7 +447,7 @@ function generatePdfHtml(record) {
   const {
     label = '', script = '', time = '', ok = false,
     thresholdsPassed = 0, thresholdsFailed = 0, total = 0,
-    durationSec = 0, thresholds = [],
+    durationSec = 0, thresholds = [], logLines = [],
   } = record;
 
   const passRate = total > 0 ? ((thresholdsPassed / total) * 100).toFixed(1) : '0.0';
@@ -459,6 +462,26 @@ function generatePdfHtml(record) {
   }
   // Also keep ungrouped metrics (no ep: tag)
   const ungrouped = thresholds.filter(t => !t.tag);
+
+  // Colour-code a single raw log line for the PDF terminal block
+  function termLine(line) {
+    const t = esc(line);
+    if (/^\s+✓/.test(line))                                           return `<span class="t-pass">${t}</span>`;
+    if (/^\s+✗/.test(line))                                           return `<span class="t-fail">${t}</span>`;
+    if (/ERRO|error/i.test(line))                                     return `<span class="t-fail">${t}</span>`;
+    if (/WARN/i.test(line))                                           return `<span class="t-warn">${t}</span>`;
+    if (/INFO|setup|teardown/i.test(line))                            return `<span class="t-info">${t}</span>`;
+    if (/http_req_duration|http_req_failed|checks|http_reqs/.test(line)) return `<span class="t-metric">${t}</span>`;
+    if (/^={3}|^\s*✓\s*PASS|^\s*✗\s*FAIL/.test(line))               return `<span class="t-bold">${t}</span>`;
+    return t;
+  }
+
+  const terminalHtml = logLines.length > 0
+    ? `<div class="section page-break">
+        <h2>Terminal Output</h2>
+        <div class="terminal">${logLines.map(termLine).join('\n')}</div>
+      </div>`
+    : '';
 
   const tagRows = Object.values(byTag).map(({ tag, items }) => {
     const allPass = items.every(i => i.passed);
@@ -533,6 +556,15 @@ function generatePdfHtml(record) {
   /* ── Footer ── */
   .report-footer { padding: 16px 36px; background: #f8fafc; border-top: 1px solid #e2e8f0; font-size: 0.72rem; color: #94a3b8; display: flex; justify-content: space-between; }
 
+  /* ── Terminal log ── */
+  .terminal { background: #0d0f1c; border-radius: 8px; padding: 16px 18px; overflow-x: auto; font-family: 'Consolas', 'Courier New', monospace; font-size: 0.75rem; line-height: 1.6; white-space: pre; color: #9ba3c4; margin-top: 4px; }
+  .terminal .t-pass   { color: #4ade80; }
+  .terminal .t-fail   { color: #f87171; }
+  .terminal .t-info   { color: #818cf8; }
+  .terminal .t-warn   { color: #fbbf24; }
+  .terminal .t-metric { color: #a5b4fc; }
+  .terminal .t-bold   { color: #e2e8f0; font-weight: 700; }
+
   /* ── Print button ── */
   .print-btn { position: fixed; bottom: 24px; right: 24px; background: #4f46e5; color: #fff; border: none; padding: 12px 22px; border-radius: 10px; font-size: 0.86rem; font-weight: 600; cursor: pointer; box-shadow: 0 4px 16px rgba(79,70,229,0.35); }
   .print-btn:hover { background: #4338ca; }
@@ -575,6 +607,8 @@ ${ungrouped.length > 0 ? `
     <tbody>${ungroupedRows}</tbody>
   </table>
 </div>` : ''}
+
+${terminalHtml}
 
 <div class="report-footer">
   <span>k6 Load Test Dashboard · Circuly API v2026-04</span>
