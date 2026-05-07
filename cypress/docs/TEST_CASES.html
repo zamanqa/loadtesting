@@ -574,18 +574,33 @@ function renderLogLine(line) {
 }
 
 function parseThresholdLine(line, mod) {
-  // Match lines like: "    ✓ { ep:orders.get_list }.....: 100.00% ..."
-  const m = line.match(/\s+([✓✗])\s+\{\s*ep:([^\}]+)\s*\}/);
+  // k6 summary lines look like:
+  //   ✓ http_req_duration{ep:orders.get_list}.........: avg=342ms … p(95)=876ms
+  //   ✗ checks{ep:orders.get_by_id}...................: 94.12% ✓ 32 ✗ 2
+  //   ✓ http_req_failed{ep:orders.get_list}...........: 0.00% ✓ 0 ✗ 0
+  const m = line.match(/([✓✗])\s+[\w_]+\{ep:([^}]+)\}/);
   if (!m) return;
-  const passed = m[1] === '✓';
-  const tag    = m[2].trim();
-  thresholdResults[tag] = passed ? 'pass' : 'fail';
+
+  const linePass = m[1] === '✓';
+  const tag      = m[2].trim();
+
+  // A tag has multiple threshold lines (p90, p95, error-rate, checks).
+  // Mark fail if ANY line is a fail; only mark pass when no fail seen yet.
+  if (linePass) {
+    if (!(tag in thresholdResults)) thresholdResults[tag] = 'pass';
+    // leave 'fail' intact if already set
+  } else {
+    thresholdResults[tag] = 'fail';  // one fail overrides everything
+  }
+
+  const finalState = thresholdResults[tag];
   // Update every tab that contains this endpoint tag (all-modules + individual module)
   document.querySelectorAll(`[data-ep-tag="${tag}"]`).forEach(el => {
-    el.className = 'ep-result ' + (passed ? 'pass' : 'fail');
-    el.textContent = passed ? '✓ Pass' : '✗ Fail';
+    el.className = 'ep-result ' + finalState;
+    el.textContent = finalState === 'pass' ? '✓ Pass' : '✗ Fail';
   });
-  // Update stats
+
+  // Update stats counters
   const allTags = Object.keys(thresholdResults);
   const passed2 = allTags.filter(t => thresholdResults[t] === 'pass').length;
   const failed2 = allTags.filter(t => thresholdResults[t] === 'fail').length;
