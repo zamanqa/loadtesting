@@ -4,7 +4,7 @@
  * Covers 5 endpoints:
  *   GET /products                               (product list)
  *   GET /products/:id/variants                  (variants for a product)
- *   GET /product-variants                       (all variants list)
+ *   GET /products/variants                      (all variants list)
  *   GET /products?page=1&per_page=100&sort=...  (filter)
  *   GET /products?search=:title                 (search by product title)
  *
@@ -120,10 +120,10 @@ export default function ({ productId, productTitle }) {
     }, { module: 'products', ep: 'products.get_variants' });
   }
 
-  // GET /product-variants — all variants list
+  // GET /products/variants — all variants list
   k6.sleep(SLEEP_BETWEEN_REQUESTS);
   const allVariantsRes = k6.http.get(
-    `${base}/product-variants?page=1&per_page=100&sort=created_at&desc=true`,
+    `${base}/products/variants?page=1&per_page=100&sort=created_at&desc=true`,
     params('products.get_all_variants')
   );
   k6.check(allVariantsRes, {
@@ -172,7 +172,7 @@ const REPORT_CONFIG = {
     label: {
       'products.get_list':         'GET /products (list)',
       'products.get_variants':     'GET /products/:id/variants',
-      'products.get_all_variants': 'GET /product-variants (all)',
+      'products.get_all_variants': 'GET /products/variants (all)',
       'products.get_by_filter':    'GET /products (filter)',
       'products.get_by_search':    'GET /products?search=:title',
     }[tag],

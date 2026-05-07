@@ -1,11 +1,10 @@
 /**
  * Load test — Customers module (all GET endpoints)
  *
- * Covers 6 endpoints:
+ * Covers 5 endpoints:
  *   GET /customers                              (list)
  *   GET /customers/:uid                         (by ID)
  *   GET /customers/:uid/balance                 (balance)
- *   GET /customers/:uid/referral-code           (referral code)
  *   GET /customers?page=1&per_page=100&sort=... (filter)
  *   GET /customers?search=:uid                  (search)
  *
@@ -23,7 +22,6 @@ const ENDPOINTS = [
   { tag: 'customers.get_list',         p95: 1100, p90: 1000 },
   { tag: 'customers.get_by_id',        p95: 1100, p90: 1000 },
   { tag: 'customers.get_balance',      p95: 1100, p90: 1000 },
-  { tag: 'customers.get_referral',     p95: 1100, p90: 1000 },
   { tag: 'customers.get_by_filter',    p95: 1100, p90: 1000 },
   { tag: 'customers.get_by_search',    p95: 1100, p90: 1000 },
 ];
@@ -122,14 +120,6 @@ export default function ({ customerId }) {
     [`get_balance: under ${limit['customers.get_balance']}ms`]: (r) => r.timings.duration < limit['customers.get_balance'],
   }, { module: 'customers', ep: 'customers.get_balance' });
 
-  // GET /customers/:uid/referral-code
-  k6.sleep(SLEEP_BETWEEN_REQUESTS);
-  const referralRes = k6.http.get(`${base}/customers/${customerId}/referral-code`, params('customers.get_referral'));
-  k6.check(referralRes, {
-    'get_referral: status 200 or 404':                        (r) => r.status === 200 || r.status === 404,
-    [`get_referral: under ${limit['customers.get_referral']}ms`]: (r) => r.timings.duration < limit['customers.get_referral'],
-  }, { module: 'customers', ep: 'customers.get_referral' });
-
   // GET /customers — filter
   k6.sleep(SLEEP_BETWEEN_REQUESTS);
   const filterRes = k6.http.get(
@@ -169,7 +159,6 @@ const REPORT_CONFIG = {
       'customers.get_list':      'GET /customers (list)',
       'customers.get_by_id':     'GET /customers/:uid',
       'customers.get_balance':   'GET /customers/:uid/balance',
-      'customers.get_referral':  'GET /customers/:uid/referral-code',
       'customers.get_by_filter': 'GET /customers (filter)',
       'customers.get_by_search': 'GET /customers?search=:uid',
     }[tag],

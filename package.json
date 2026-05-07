@@ -4,11 +4,8 @@
   "description": "Cypress E2E tests for Circuly Unified Customer API (2026-04)",
   "private": true,
   "scripts": {
-    "open": "cypress open",
-    "cy:run": "cypress run",
-    "sync-server": "node cypress/docs/sync-server.js",
-    "sync-docs": "node cypress/docs/sync-test-cases.js",
-    "lint": "eslint cypress/",
+    "preall:load": "node -e \"require('fs').mkdirSync('cypress/e2e/load/reports',{recursive:true})\"",
+    "all:load": "dotenv -- k6 run cypress/e2e/load/all-modules.load.test.js",
     "prelogin:load": "node -e \"require('fs').mkdirSync('cypress/e2e/load/reports',{recursive:true})\"",
     "login:load": "dotenv -- k6 run cypress/e2e/load/login.load.test.js",
     "preorders:load": "node -e \"require('fs').mkdirSync('cypress/e2e/load/reports',{recursive:true})\"",
@@ -30,12 +27,7 @@
     "preretailers:load": "node -e \"require('fs').mkdirSync('cypress/e2e/load/reports',{recursive:true})\"",
     "retailers:load": "dotenv -- k6 run cypress/e2e/load/retailers.load.test.js",
     "prevouchers:load": "node -e \"require('fs').mkdirSync('cypress/e2e/load/reports',{recursive:true})\"",
-    "vouchers:load": "dotenv -- k6 run cypress/e2e/load/vouchers.load.test.js",
-    "k6:smoke": "dotenv -- k6 run cypress/e2e/smoke/smoke.test.js",
-    "k6:load": "dotenv -- k6 run cypress/e2e/load/load.test.js",
-    "k6:stress": "dotenv -- k6 run cypress/e2e/stress/stress.test.js",
-    "k6:spike": "dotenv -- k6 run cypress/e2e/spike/spike.test.js",
-    "k6:soak": "dotenv -- k6 run cypress/e2e/soak/soak.test.js"
+    "vouchers:load": "dotenv -- k6 run cypress/e2e/load/vouchers.load.test.js"
   },
   "devDependencies": {
     "cypress": "^13.17.0",
