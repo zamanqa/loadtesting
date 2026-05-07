@@ -14,7 +14,7 @@
 
 import http from 'k6/http';
 import { check, sleep } from 'k6';
-import { getToken, setupAuth } from '../helpers/auth.js';
+import { getToken, setupAuth } from '../../support/helpers/auth.js';
 import { textSummary } from 'https://jslib.k6.io/k6-summary/0.0.1/index.js';
 
 const BASE_URL    = __ENV.BASE_URL;
