@@ -388,21 +388,24 @@ async function syncMeta() {
     MODULES = data.modules;
 
     // Update header stats
-    const totalEps = MODULES.reduce((s, m) => s + m.endpoints.length, 0);
     const allMod   = MODULES.find(m => m.id === 'all');
-    document.getElementById('statModules').textContent   = MODULES.filter(m => m.id !== 'all').length;
+    // Endpoint count = the 'all' module's list (avoids double-counting individual modules)
+    const totalEps = allMod ? allMod.endpoints.length
+                            : MODULES.filter(m => m.id !== 'all').reduce((s, m) => s + m.endpoints.length, 0);
+    const modCount = MODULES.filter(m => m.id !== 'all').length;
+    document.getElementById('statModules').textContent   = modCount;
     document.getElementById('statEndpoints').textContent = totalEps;
     document.getElementById('statVUs').textContent       = allMod ? allMod.vus : '—';
 
     // Update footer
     const footer = document.querySelector('.footer');
     if (footer) footer.textContent =
-      `k6 Load Test Dashboard · Circuly API v2026-04 · ${MODULES.filter(m=>m.id!=='all').length} modules · ${totalEps} endpoints`;
+      `k6 Load Test Dashboard · Circuly API v2026-04 · ${modCount} modules · ${totalEps} endpoints`;
 
     buildTabBar();
     buildTabContents();
     switchTab(activeTab || (MODULES[0] ? MODULES[0].id : 'reports'));
-    showToast('Synced — ' + totalEps + ' endpoints across ' + MODULES.length + ' modules', 'success');
+    showToast('Synced — ' + totalEps + ' endpoints across ' + modCount + ' modules', 'success');
   } catch (e) {
     panel.innerHTML = `<div style="padding:24px 20px;color:#f87171;line-height:1.9;">
       ⚠ Sync failed: ${e.message}<br>

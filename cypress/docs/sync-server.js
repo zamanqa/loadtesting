@@ -447,63 +447,36 @@ function generatePdfHtml(record) {
   const {
     label = '', script = '', time = '', ok = false,
     thresholdsPassed = 0, thresholdsFailed = 0, total = 0,
-    durationSec = 0, thresholds = [], logLines = [],
+    durationSec = 0, logLines = [],
   } = record;
 
   const passRate = total > 0 ? ((thresholdsPassed / total) * 100).toFixed(1) : '0.0';
-
-  // Group threshold rows by endpoint tag prefix (e.g. "orders.get_list")
-  // One logical row per tag, columns: tag | duration p95/p99 | failed rate | checks
-  const byTag = {};
-  for (const t of thresholds) {
-    const tag = t.tag || t.metric;
-    if (!byTag[tag]) byTag[tag] = { tag, items: [] };
-    byTag[tag].items.push(t);
-  }
-  // Also keep ungrouped metrics (no ep: tag)
-  const ungrouped = thresholds.filter(t => !t.tag);
-
-  // Colour-code a single raw log line for the PDF terminal block
-  function termLine(line) {
-    const t = esc(line);
-    if (/^\s+✓/.test(line))                                           return `<span class="t-pass">${t}</span>`;
-    if (/^\s+✗/.test(line))                                           return `<span class="t-fail">${t}</span>`;
-    if (/ERRO|error/i.test(line))                                     return `<span class="t-fail">${t}</span>`;
-    if (/WARN/i.test(line))                                           return `<span class="t-warn">${t}</span>`;
-    if (/INFO|setup|teardown/i.test(line))                            return `<span class="t-info">${t}</span>`;
-    if (/http_req_duration|http_req_failed|checks|http_reqs/.test(line)) return `<span class="t-metric">${t}</span>`;
-    if (/^={3}|^\s*✓\s*PASS|^\s*✗\s*FAIL/.test(line))               return `<span class="t-bold">${t}</span>`;
-    return t;
-  }
-
-  const terminalHtml = logLines.length > 0
-    ? `<div class="section page-break">
-        <h2>Terminal Output</h2>
-        <div class="terminal">${logLines.map(termLine).join('\n')}</div>
-      </div>`
-    : '';
-
-  const tagRows = Object.values(byTag).map(({ tag, items }) => {
-    const allPass = items.every(i => i.passed);
-    const metrics = items.map(i => {
-      const mname = i.metric.replace(/\{[^}]+\}/g, '');
-      return `<span class="chip ${i.passed ? 'green' : 'red'}">${esc(mname)}</span>`;
-    }).join('');
-    return `<tr>
-      <td class="tag-cell">${esc(tag)}</td>
-      <td>${metrics}</td>
-      <td class="${allPass ? 'pass-cell' : 'fail-cell'}">${allPass ? '✓ PASS' : '✗ FAIL'}</td>
-    </tr>`;
-  }).join('');
-
-  const ungroupedRows = ungrouped.map(t => `<tr>
-    <td class="tag-cell" colspan="2" style="color:#64748b;font-size:0.78rem;">${esc(t.metric)}</td>
-    <td class="${t.passed ? 'pass-cell' : 'fail-cell'}">${t.passed ? '✓' : '✗'}</td>
-  </tr>`).join('');
-
   const durLabel = durationSec < 60 ? `${durationSec}s`
     : durationSec < 3600 ? `${Math.round(durationSec/60)} min`
     : `${(durationSec/3600).toFixed(1)} hr`;
+
+  // ── Extract k6 summary section (starts at first dotted metric line) ──────────
+  const SUMMARY_START_RE = /^\s*(data_received|checks|vus_max|vus\b|iterations\b|http_req)/;
+  let summaryIdx = logLines.findIndex(l => SUMMARY_START_RE.test(l));
+  if (summaryIdx < 0) summaryIdx = logLines.findIndex(l => /^\s*\w[\w_]*\.{4,}:/.test(l));
+  const summaryLines = summaryIdx >= 0 ? logLines.slice(summaryIdx) : logLines.slice(-80);
+  const setupLines   = summaryIdx >= 0 ? logLines.slice(0, summaryIdx) : [];
+
+  // Colour-code a single terminal line for PDF
+  function termLine(line) {
+    const t = esc(line);
+    if (/^\s+[✓✔]\s/.test(line))                                    return `<span class="t-pass">${t}</span>`;
+    if (/^\s+[✗✘]\s/.test(line))                                    return `<span class="t-fail">${t}</span>`;
+    if (/ERRO|error/i.test(line) && !/http_req/.test(line))                   return `<span class="t-fail">${t}</span>`;
+    if (/WARN/i.test(line))                                                   return `<span class="t-warn">${t}</span>`;
+    if (/INFO|setup|teardown/i.test(line))                                    return `<span class="t-info">${t}</span>`;
+    if (/^\s*(data_received|data_sent|http_req|vus|checks|iterations|iteration_duration)/.test(line)) return `<span class="t-metric">${t}</span>`;
+    if (/^={3}|PASSED|FAILED/.test(line))                                     return `<span class="t-bold">${t}</span>`;
+    return t;
+  }
+
+  const summaryHtml = summaryLines.map(termLine).join('\n');
+  const setupHtml   = setupLines.map(termLine).join('\n');
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -511,104 +484,104 @@ function generatePdfHtml(record) {
 <meta charset="UTF-8">
 <title>k6 Report — ${esc(label)}</title>
 <style>
-  @page { margin: 18mm 16mm; }
+  @page { size: A4; margin: 14mm 14mm; }
   @media print {
     body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     .no-print { display: none !important; }
     .page-break { page-break-before: always; }
   }
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #fff; color: #1e293b; font-size: 13px; line-height: 1.5; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0d0f1c; color: #c9d1d9; font-size: 13px; line-height: 1.5; }
 
-  /* ── Header ── */
-  .report-header { background: #1a1b2e; color: #fff; padding: 28px 36px; display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; }
-  .report-header h1 { font-size: 1.3rem; font-weight: 700; letter-spacing: -0.3px; margin-bottom: 4px; }
-  .report-header .sub { font-size: 0.78rem; color: #a5b4fc; }
-  .badge-result { padding: 6px 18px; border-radius: 8px; font-size: 0.9rem; font-weight: 700; white-space: nowrap; }
+  /* Header bar */
+  .report-header {
+    background: #161827; border-bottom: 1px solid #2a2d50;
+    padding: 20px 28px; display: flex; align-items: center; justify-content: space-between; gap: 20px;
+  }
+  .report-header h1 { font-size: 1.1rem; font-weight: 700; color: #e2e8f0; margin-bottom: 3px; }
+  .report-header .sub { font-size: 0.75rem; color: #6c7bf0; font-family: 'Consolas', monospace; }
+  .badge-result { padding: 5px 16px; border-radius: 6px; font-size: 0.82rem; font-weight: 700; white-space: nowrap; font-family: monospace; }
   .badge-pass { background: #14532d; color: #4ade80; border: 1px solid #166534; }
   .badge-fail { background: #450a0a; color: #f87171; border: 1px solid #7f1d1d; }
 
-  /* ── Summary cards ── */
-  .summary { display: flex; gap: 16px; padding: 24px 36px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; flex-wrap: wrap; }
-  .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 22px; min-width: 120px; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
-  .card .num { font-size: 1.8rem; font-weight: 700; color: #4f46e5; }
-  .card .num.green { color: #16a34a; }
-  .card .num.red   { color: #dc2626; }
-  .card .lbl { font-size: 0.68rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.7px; margin-top: 3px; }
+  /* Stat row */
+  .stat-row { display: flex; gap: 1px; background: #2a2d50; border-bottom: 1px solid #2a2d50; }
+  .stat-box { flex: 1; background: #161827; padding: 12px 18px; text-align: center; }
+  .stat-box .num { font-size: 1.5rem; font-weight: 700; font-family: 'Consolas', monospace; }
+  .stat-box .num.green { color: #4ade80; }
+  .stat-box .num.red   { color: #f87171; }
+  .stat-box .num.blue  { color: #818cf8; }
+  .stat-box .lbl { font-size: 0.65rem; color: #6b7280; text-transform: uppercase; letter-spacing: 0.8px; margin-top: 2px; }
 
-  /* ── Section ── */
-  .section { padding: 24px 36px; }
-  .section h2 { font-size: 0.88rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #475569; margin-bottom: 14px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; }
+  /* Section */
+  .section { padding: 18px 28px; }
+  .section-title {
+    font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
+    color: #6c7bf0; margin-bottom: 10px; padding-bottom: 6px;
+    border-bottom: 1px solid #2a2d50; font-family: 'Consolas', monospace;
+  }
 
-  /* ── Table ── */
-  table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
-  th { text-align: left; padding: 9px 14px; background: #f1f5f9; color: #475569; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.6px; border-bottom: 2px solid #e2e8f0; font-weight: 600; }
-  td { padding: 8px 14px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
-  tr:last-child td { border-bottom: none; }
-  tr:hover td { background: #f8fafc; }
-  .tag-cell { font-family: 'Consolas', monospace; color: #4f46e5; font-size: 0.78rem; }
-  .pass-cell { color: #16a34a; font-weight: 700; white-space: nowrap; }
-  .fail-cell { color: #dc2626; font-weight: 700; white-space: nowrap; }
-  .chip { display: inline-block; font-size: 0.68rem; padding: 2px 7px; border-radius: 4px; margin: 1px; font-family: monospace; white-space: nowrap; }
-  .chip.green { background: #dcfce7; color: #15803d; }
-  .chip.red   { background: #fee2e2; color: #b91c1c; }
+  /* Terminal block */
+  .terminal {
+    background: #0a0b14; border: 1px solid #1e2040; border-radius: 6px;
+    padding: 14px 16px; overflow-x: auto;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 0.73rem; line-height: 1.65; white-space: pre; color: #9ba3c4;
+  }
+  .t-pass   { color: #4ade80; }
+  .t-fail   { color: #f87171; }
+  .t-info   { color: #818cf8; }
+  .t-warn   { color: #fbbf24; }
+  .t-metric { color: #a5b4fc; }
+  .t-bold   { color: #e2e8f0; font-weight: 700; }
 
-  /* ── Footer ── */
-  .report-footer { padding: 16px 36px; background: #f8fafc; border-top: 1px solid #e2e8f0; font-size: 0.72rem; color: #94a3b8; display: flex; justify-content: space-between; }
+  /* Footer */
+  .report-footer {
+    padding: 12px 28px; background: #161827; border-top: 1px solid #2a2d50;
+    font-size: 0.68rem; color: #475569; display: flex; justify-content: space-between;
+    font-family: monospace;
+  }
 
-  /* ── Terminal log ── */
-  .terminal { background: #0d0f1c; border-radius: 8px; padding: 16px 18px; overflow-x: auto; font-family: 'Consolas', 'Courier New', monospace; font-size: 0.75rem; line-height: 1.6; white-space: pre; color: #9ba3c4; margin-top: 4px; }
-  .terminal .t-pass   { color: #4ade80; }
-  .terminal .t-fail   { color: #f87171; }
-  .terminal .t-info   { color: #818cf8; }
-  .terminal .t-warn   { color: #fbbf24; }
-  .terminal .t-metric { color: #a5b4fc; }
-  .terminal .t-bold   { color: #e2e8f0; font-weight: 700; }
-
-  /* ── Print button ── */
-  .print-btn { position: fixed; bottom: 24px; right: 24px; background: #4f46e5; color: #fff; border: none; padding: 12px 22px; border-radius: 10px; font-size: 0.86rem; font-weight: 600; cursor: pointer; box-shadow: 0 4px 16px rgba(79,70,229,0.35); }
-  .print-btn:hover { background: #4338ca; }
+  /* Print button */
+  .print-btn {
+    position: fixed; bottom: 22px; right: 22px;
+    background: #6c7bf0; color: #fff; border: none;
+    padding: 10px 20px; border-radius: 8px; font-size: 0.82rem; font-weight: 600;
+    cursor: pointer; box-shadow: 0 4px 16px rgba(108,123,240,0.4);
+  }
+  .print-btn:hover { background: #5a69e0; }
 </style>
 </head>
 <body>
 
 <div class="report-header">
   <div>
-    <div style="font-size:0.72rem;color:#818cf8;font-weight:600;margin-bottom:6px;letter-spacing:1px;">K6 LOAD TEST REPORT</div>
+    <div style="font-size:0.65rem;color:#525880;font-weight:600;letter-spacing:1.2px;margin-bottom:4px;">K6 LOAD TEST REPORT</div>
     <h1>${esc(label)}</h1>
-    <div class="sub">Script: <code style="color:#e0e7ff;">${esc(script)}</code> &nbsp;·&nbsp; ${esc(time)}</div>
+    <div class="sub">npm run ${esc(script)} &nbsp;&middot;&nbsp; ${esc(time)}</div>
   </div>
   <div class="badge-result ${ok ? 'badge-pass' : 'badge-fail'}">${ok ? '✓ PASSED' : '✗ FAILED'}</div>
 </div>
 
-<div class="summary">
-  <div class="card"><div class="num">${esc(durLabel)}</div><div class="lbl">Duration</div></div>
-  <div class="card"><div class="num">${total}</div><div class="lbl">Thresholds</div></div>
-  <div class="card"><div class="num green">${thresholdsPassed}</div><div class="lbl">Passed</div></div>
-  <div class="card"><div class="num red">${thresholdsFailed}</div><div class="lbl">Failed</div></div>
-  <div class="card"><div class="num ${ok ? 'green' : 'red'}">${passRate}%</div><div class="lbl">Pass Rate</div></div>
-  <div class="card"><div class="num">${esc(record.vus || '—')}</div><div class="lbl">Max VUs</div></div>
+<div class="stat-row">
+  <div class="stat-box"><div class="num blue">${esc(durLabel)}</div><div class="lbl">Duration</div></div>
+  <div class="stat-box"><div class="num blue">${total}</div><div class="lbl">Thresholds</div></div>
+  <div class="stat-box"><div class="num green">${thresholdsPassed}</div><div class="lbl">Passed</div></div>
+  <div class="stat-box"><div class="num red">${thresholdsFailed}</div><div class="lbl">Failed</div></div>
+  <div class="stat-box"><div class="num ${ok ? 'green' : 'red'}">${passRate}%</div><div class="lbl">Pass Rate</div></div>
 </div>
 
-${Object.keys(byTag).length > 0 ? `
+${summaryLines.length > 0 ? `
 <div class="section">
-  <h2>Threshold Results — Per Endpoint</h2>
-  <table>
-    <thead><tr><th>Endpoint Tag</th><th>Metrics</th><th>Result</th></tr></thead>
-    <tbody>${tagRows}</tbody>
-  </table>
+  <div class="section-title">k6 metrics summary</div>
+  <div class="terminal">${summaryHtml}</div>
 </div>` : ''}
 
-${ungrouped.length > 0 ? `
-<div class="section">
-  <h2>Global Thresholds</h2>
-  <table>
-    <thead><tr><th colspan="2">Metric</th><th>Result</th></tr></thead>
-    <tbody>${ungroupedRows}</tbody>
-  </table>
+${setupLines.length > 0 ? `
+<div class="section page-break">
+  <div class="section-title">run log</div>
+  <div class="terminal">${setupHtml}</div>
 </div>` : ''}
-
-${terminalHtml}
 
 <div class="report-footer">
   <span>k6 Load Test Dashboard · Circuly API v2026-04</span>
