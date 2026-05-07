@@ -17,15 +17,10 @@
  * Run: npm run orders:load
  */
 
-import http from 'k6/http';
-import { check, sleep } from 'k6';
+import { http, check, sleep, textSummary, BASE_URL, API_VERSION } from '../../support/helpers/k6.js';
 import { getToken, setupAuth } from '../../support/helpers/auth.js';
-import { textSummary } from 'https://jslib.k6.io/k6-summary/0.0.1/index.js';
 import { buildHtmlReport } from '../../support/helpers/report.js';
 import { buildThresholds } from '../../support/helpers/thresholds.js';
-
-const BASE_URL    = __ENV.BASE_URL;
-const API_VERSION = __ENV.API_VERSION || '2026-04';
 
 // Change this one constant to adjust the pause between all requests globally.
 const SLEEP_BETWEEN_REQUESTS = 1; // seconds
