@@ -13,6 +13,8 @@
     "login:load": "dotenv -- k6 run cypress/e2e/load/login.load.test.js",
     "preorders:load": "node -e \"require('fs').mkdirSync('cypress/e2e/load/reports',{recursive:true})\"",
     "orders:load": "dotenv -- k6 run cypress/e2e/load/orders.load.test.js",
+    "presubscriptions:load": "node -e \"require('fs').mkdirSync('cypress/e2e/load/reports',{recursive:true})\"",
+    "subscriptions:load": "dotenv -- k6 run cypress/e2e/load/subscriptions.load.test.js",
     "k6:smoke": "dotenv -- k6 run cypress/e2e/smoke/smoke.test.js",
     "k6:load": "dotenv -- k6 run cypress/e2e/load/load.test.js",
     "k6:stress": "dotenv -- k6 run cypress/e2e/stress/stress.test.js",
