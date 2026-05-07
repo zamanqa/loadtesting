@@ -715,8 +715,8 @@ function appendLog(text, cls) {
   row.appendChild(badgeEl);
   row.appendChild(msgEl);
 
-  body.appendChild(row);
-  body.scrollTop = body.scrollHeight;   // auto-scroll to latest; user can scroll up freely
+  body.insertBefore(row, body.firstChild);  // newest at top; older scroll down
+  body.scrollTop = 0;
 }
 
 function clearLog() {
