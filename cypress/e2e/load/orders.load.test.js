@@ -27,13 +27,15 @@ const SLEEP_BETWEEN_REQUESTS = 1; // seconds
 
 // Endpoint definitions — used by the threshold builder, check labels, and report config.
 // Change p95 here and both the threshold gate AND the check label update automatically.
+// p90 is set explicitly because auto-derived (p95 × 0.80) is too tight for these endpoints —
+// measured p90 runs at ~830–880ms while p95 is ~870–890ms, so the ratio is closer to 0.95.
 const ENDPOINTS = [
-  { tag: 'orders.get_list',                p95: 3000 },
-  { tag: 'orders.get_by_id',               p95: 3000 },
-  { tag: 'orders.get_payment_update_link', p95: 3000 },
-  { tag: 'orders.get_payment_methods',     p95: 3000 },
-  { tag: 'orders.get_by_filter',           p95: 3000 },
-  { tag: 'orders.get_by_search',           p95: 3000 },
+  { tag: 'orders.get_list',                p95: 1000, p90: 950 },
+  { tag: 'orders.get_by_id',               p95: 1000, p90: 950 },
+  { tag: 'orders.get_payment_update_link', p95: 1000, p90: 950 },
+  { tag: 'orders.get_payment_methods',     p95: 1000, p90: 950 },
+  { tag: 'orders.get_by_filter',           p95: 1000, p90: 950 },
+  { tag: 'orders.get_by_search',           p95: 1000, p90: 950 },
 ];
 
 // Lookup map so check labels and conditions always match the p95 value above.
@@ -112,7 +114,7 @@ export default function ({ orderId }) {
     'get_list: status 200':                              (r) => r.status === 200,
     'get_list: has data':                               (r) => { try { return Array.isArray(JSON.parse(r.body).data); } catch { return false; } },
     [`get_list: under ${limit['orders.get_list']}ms`]:  (r) => r.timings.duration < limit['orders.get_list'],
-  });
+  }, { module: 'orders', endpoint: 'orders.get_list' });
 
   // GET /orders/:id
   k6.sleep(SLEEP_BETWEEN_REQUESTS);
@@ -122,7 +124,7 @@ export default function ({ orderId }) {
       'get_by_id: status 200':                               (r) => r.status === 200,
       'get_by_id: has id':                                   (r) => { try { return !!JSON.parse(r.body).id; } catch { return false; } },
       [`get_by_id: under ${limit['orders.get_by_id']}ms`]:   (r) => r.timings.duration < limit['orders.get_by_id'],
-    });
+    }, { module: 'orders', endpoint: 'orders.get_by_id' });
   }
 
   // GET /orders/:id/payment-update-link
@@ -135,7 +137,7 @@ export default function ({ orderId }) {
     k6.check(linkRes, {
       'payment_update_link: status 200':                                           (r) => r.status === 200,
       [`payment_update_link: under ${limit['orders.get_payment_update_link']}ms`]: (r) => r.timings.duration < limit['orders.get_payment_update_link'],
-    });
+    }, { module: 'orders', endpoint: 'orders.get_payment_update_link' });
   }
 
   // GET /orders/:id/payment-methods
@@ -148,7 +150,7 @@ export default function ({ orderId }) {
     k6.check(detailsRes, {
       'payment_methods: status 200':                                       (r) => r.status === 200,
       [`payment_methods: under ${limit['orders.get_payment_methods']}ms`]: (r) => r.timings.duration < limit['orders.get_payment_methods'],
-    });
+    }, { module: 'orders', endpoint: 'orders.get_payment_methods' });
   }
 
   // GET /orders — with explicit filter params
@@ -161,7 +163,7 @@ export default function ({ orderId }) {
     'get_by_filter: status 200':                                  (r) => r.status === 200,
     'get_by_filter: has data':                                    (r) => { try { return Array.isArray(JSON.parse(r.body).data); } catch { return false; } },
     [`get_by_filter: under ${limit['orders.get_by_filter']}ms`]:  (r) => r.timings.duration < limit['orders.get_by_filter'],
-  });
+  }, { module: 'orders', endpoint: 'orders.get_by_filter' });
 
   // GET /orders?search=:orderId
   k6.sleep(SLEEP_BETWEEN_REQUESTS);
@@ -174,7 +176,7 @@ export default function ({ orderId }) {
       'get_by_search: status 200':                                  (r) => r.status === 200,
       'get_by_search: has data':                                    (r) => { try { return Array.isArray(JSON.parse(r.body).data); } catch { return false; } },
       [`get_by_search: under ${limit['orders.get_by_search']}ms`]:  (r) => r.timings.duration < limit['orders.get_by_search'],
-    });
+    }, { module: 'orders', endpoint: 'orders.get_by_search' });
   }
 }
 
