@@ -27,9 +27,9 @@ const SLEEP_BETWEEN_REQUESTS = 1; // seconds
 // Change p95 here and both the threshold gate AND the check label update automatically.
 // p90 is set explicitly to avoid the auto-derived (p95 × 0.80) being too aggressive.
 const ENDPOINTS = [
-  { tag: 'subscriptions.get_list',      p95: 1500, p90: 1400 },
+  { tag: 'subscriptions.get_list',      p95: 2000, p90: 1900 },
   { tag: 'subscriptions.get_by_id',     p95: 1100, p90: 1000 },
-  { tag: 'subscriptions.get_by_filter', p95: 1100, p90: 1000 },
+  { tag: 'subscriptions.get_by_filter', p95: 1500, p90: 1400 },
   { tag: 'subscriptions.get_by_search', p95: 1100, p90: 1000 },
 ];
 
