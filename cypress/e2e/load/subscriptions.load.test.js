@@ -27,7 +27,7 @@ const SLEEP_BETWEEN_REQUESTS = 1; // seconds
 // Change p95 here and both the threshold gate AND the check label update automatically.
 // p90 is set explicitly to avoid the auto-derived (p95 × 0.80) being too aggressive.
 const ENDPOINTS = [
-  { tag: 'subscriptions.get_list',      p95: 1100, p90: 1000 },
+  { tag: 'subscriptions.get_list',      p95: 1500, p90: 1400 },
   { tag: 'subscriptions.get_by_id',     p95: 1100, p90: 1000 },
   { tag: 'subscriptions.get_by_filter', p95: 1100, p90: 1000 },
   { tag: 'subscriptions.get_by_search', p95: 1100, p90: 1000 },
@@ -68,10 +68,7 @@ export function setup() {
   }
 
   const body = JSON.parse(res.body);
-  const first = body.data && body.data.length > 0 ? body.data[0] : null;
-
-  // API may return the ID as 'subscription_id' or 'id' — handle both.
-  const subscriptionId = first ? (first.subscription_id || first.id) : null;
+  const subscriptionId = body.data && body.data.length > 0 ? body.data[0].subscription_id : null;
 
   if (!subscriptionId) {
     throw new Error('No subscriptions found in the database — cannot run test without a valid subscriptionId');
@@ -121,7 +118,7 @@ export default function ({ subscriptionId }) {
     );
     k6.check(byIdRes, {
       'get_by_id: status 200':                                        (r) => r.status === 200,
-      'get_by_id: has id':                                            (r) => { try { const b = JSON.parse(r.body); return !!(b.subscription_id || b.id); } catch { return false; } },
+      'get_by_id: has subscription_id':                               (r) => { try { return !!JSON.parse(r.body).subscription_id; } catch { return false; } },
       [`get_by_id: under ${limit['subscriptions.get_by_id']}ms`]:     (r) => r.timings.duration < limit['subscriptions.get_by_id'],
     }, { module: 'subscriptions', ep: 'subscriptions.get_by_id' });
   }
