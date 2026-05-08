@@ -120,6 +120,7 @@ const smokeChecksOverrides = Object.fromEntries(
 
 // ─── Scenario options ─────────────────────────────────────────────────────────
 export const options = {
+  cloud: k6.cloudConfig('All Modules Smoke'),
   summaryTrendStats: k6.SUMMARY_TREND_STATS,
   thresholds: {
     ...baseThresholds,

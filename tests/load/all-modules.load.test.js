@@ -127,6 +127,7 @@ const errorRateOverrides = Object.fromEntries(
 
 // ─── Scenario options ─────────────────────────────────────────────────────────
 export const options = {
+  cloud: k6.cloudConfig('All Modules Load'),
   summaryTrendStats: k6.SUMMARY_TREND_STATS,
   thresholds: {
     ...baseThresholds,

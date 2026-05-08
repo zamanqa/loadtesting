@@ -128,6 +128,7 @@ const stressOverrides = Object.fromEntries([
 
 // ─── Scenario options ─────────────────────────────────────────────────────────
 export const options = {
+  cloud: k6.cloudConfig('All Modules Stress'),
   summaryTrendStats: k6.SUMMARY_TREND_STATS,
   thresholds: {
     ...baseThresholds,

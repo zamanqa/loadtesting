@@ -32,3 +32,13 @@ export const STRESS_TIMEOUT  = __ENV.STRESS_TIMEOUT  || '20s'; // stress — ser
 // Trend stats written into the k6 summary data object used by handleSummary.
 // Import and spread into options.summaryTrendStats so p50/p99 appear in reports.
 export const SUMMARY_TREND_STATS = ['avg', 'min', 'max', 'p(50)', 'p(90)', 'p(95)', 'p(99)'];
+
+// Grafana k6 Cloud config — run tests from Frankfurt (same region as the API).
+// Pass to options.cloud: `cloud: cloudConfig('My Test Name')`.
+export function cloudConfig(name) {
+  return {
+    projectID:    7491665,
+    name,
+    distribution: { frankfurt: { loadZone: 'amazon:de:frankfurt', percent: 100 } },
+  };
+}

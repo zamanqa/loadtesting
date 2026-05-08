@@ -37,6 +37,7 @@ const ENDPOINTS = [
 const limit = Object.fromEntries(ENDPOINTS.map(({ tag, p95 }) => [tag, p95]));
 
 export const options = {
+  cloud: k6.cloudConfig('Subscriptions Load'),
   thresholds: buildThresholds('subscriptions', ENDPOINTS),
   scenarios: {
     load: {

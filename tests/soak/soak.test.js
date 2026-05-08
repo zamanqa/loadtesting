@@ -118,6 +118,7 @@ const soakOverrides = Object.fromEntries([
 
 // ─── Scenario options ─────────────────────────────────────────────────────────
 export const options = {
+  cloud: k6.cloudConfig('All Modules Soak'),
   summaryTrendStats: k6.SUMMARY_TREND_STATS,
   thresholds: {
     ...baseThresholds,

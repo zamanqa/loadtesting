@@ -119,6 +119,7 @@ const spikeOverrides = Object.fromEntries([
 
 // ─── Scenario options ─────────────────────────────────────────────────────────
 export const options = {
+  cloud: k6.cloudConfig('All Modules Spike'),
   summaryTrendStats: k6.SUMMARY_TREND_STATS,
   thresholds: {
     ...baseThresholds,
