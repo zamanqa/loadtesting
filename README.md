@@ -49,6 +49,27 @@ npm run all:smoke
 npm run all:load
 ```
 
+> ✅ **To run all 44 endpoints across all 10 modules in a single command, use `all-modules.load.test.js` — this is the only file you need for a complete load test.**
+
+#### Controlling load — edit the stages in `cypress/e2e/load/all-modules.load.test.js`
+
+Increase or decrease VUs and duration by updating the `stages` block:
+
+```js
+stages: [
+  { duration: '30s', target: 5 }, // ramp up   ← change target to increase VUs
+  { duration: '30s', target: 5 }, // hold       ← change duration to run longer
+  { duration: '30s', target: 5 }, // ramp down
+],
+```
+
+| Goal | Example change |
+|---|---|
+| Light load | `target: 5`, `duration: '30s'` |
+| Medium load | `target: 30`, `duration: '3m'` |
+| Heavy load | `target: 60`, `duration: '10m'` |
+| Full load test | `target: 100`, `duration: '15m'` |
+
 ### Stress test — breaking point finder (0 → 150 VUs · 17 min)
 ```bash
 npm run all:stress
