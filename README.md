@@ -55,6 +55,7 @@ npm run all:stress
 ```
 
 ### Per-module load tests
+**`npm run all:load`**
 ```bash
 npm run login:load
 npm run orders:load
