@@ -1,8 +1,7 @@
 # Dependencies
 node_modules/
 
-# Environment variables (contains credentials — never commit)
-.env
+# Environment variables
 .env.local
 
 # Cypress artifacts
