@@ -219,3 +219,11 @@ loadTest-api/
 3. Import `buildThresholds` — thresholds generate automatically
 4. Add a `pre<name>:load` + `<name>:load` pair to `package.json`
 5. Add a `REPORT_CONFIG` entry and `handleSummary` pointing to the report path
+
+---
+
+## Contributors
+
+| GitHub | Email |
+|---|---|
+| [@zamanqa](https://github.com/zamanqa) | zaman@circuly.io |
