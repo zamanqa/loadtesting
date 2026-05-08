@@ -13,8 +13,8 @@ Replaces and extends `customer-api-e2e` with JWT Bearer token auth and 18 module
 | Base URL | `https://circuly-lumen.herokuapp.com` |
 | API version | `2026-04` |
 | Auth | JWT Bearer — `POST /auth/login` with consumer_key + consumer_secret |
-| Consumer Key | `ck_shopify_po` |
-| Consumer Secret | `cs_i2451dlc5lkcsgww0gks` |
+| Consumer Key | see `.env` |
+| Consumer Secret | see `.env` |
 
 Login response sets `Cypress.env('jwtToken')`, `Cypress.env('jwtTokenExpiry')`, `Cypress.env('companyId')`.
 Token is cached — re-login only happens when JWT `exp` is past.
@@ -40,11 +40,11 @@ Configured in `cypress.config.js` via `cy.task('queryDb', sqlString)`.
 
 | Env var | Value |
 |---|---|
-| DB_HOST | `circuly-development-restore.csmudpdd3zlm.eu-central-1.rds.amazonaws.com` |
-| DB_NAME | `postgres` |
-| DB_PORT | `5432` |
-| DB_USER | `ZdFFUsWiIuILvub` |
-| COMPANY_ID | `734f-4c766638po` |
+| DB_HOST | see `.env` |
+| DB_NAME | see `.env` |
+| DB_PORT | see `.env` |
+| DB_USER | see `.env` |
+| COMPANY_ID | see `.env` |
 
 ---
 
