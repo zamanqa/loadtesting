@@ -4,7 +4,7 @@
   "description": "k6 load, smoke, stress, soak and spike tests for Circuly Unified Customer API (2026-04)",
   "private": true,
   "scripts": {
-    "dashboard": "node tests/docs/sync-server.js",
+    "sync-server": "node tests/docs/sync-server.js",
     "preall:smoke": "node -e \"require('fs').mkdirSync('tests/smoke/reports',{recursive:true})\"",
     "all:smoke": "dotenv -- k6 run tests/smoke/all-modules.smoke.test.js",
     "preall:load": "node -e \"require('fs').mkdirSync('tests/load/reports',{recursive:true})\"",

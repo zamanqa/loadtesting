@@ -64,7 +64,7 @@ function pruneRunHistory(keep = 30) {
 }
 
 // ── k6 test-file parser ───────────────────────────────────────────────────────
-const LOAD_TEST_DIR = path.join(ROOT, 'cypress', 'e2e', 'load');
+const LOAD_TEST_DIR = path.join(ROOT, 'tests', 'load');
 
 const LOAD_TEST_FILES = [
   { file: 'all-modules.load.test.js',        id: 'all',                 script: 'all:load',                label: 'All Modules' },
