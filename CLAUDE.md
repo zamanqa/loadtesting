@@ -11,14 +11,14 @@ Cypress specs are retained in `tests/_reference/` for reference only and are not
 
 | Setting | Value |
 |---|---|
-| Base URL | `https://circuly-lumen.herokuapp.com` |
-| API version | `2026-04` |
-| Auth | JWT Bearer — `POST /auth/login` with consumer_key + consumer_secret |
-| Consumer Key | see `.env` |
-| Consumer Secret | see `.env` |
+| Base URL | see `.env` → `BASE_URL` |
+| API version | `2026-04` (default) — see `.env` → `API_VERSION` |
+| Auth | JWT Bearer — `POST /{API_VERSION}/auth/login` with `consumer_key` + `consumer_secret` |
+| Consumer Key | see `.env` → `CONSUMER_KEY` |
+| Consumer Secret | see `.env` → `CONSUMER_SECRET` |
+| Company ID | see `.env` → `COMPANY_ID` |
 
-Login response sets `Cypress.env('jwtToken')`, `Cypress.env('jwtTokenExpiry')`, `Cypress.env('companyId')`.
-Token is cached — re-login only happens when JWT `exp` is past.
+Token is cached per VU in `auth.js` — re-login only when JWT `exp` is within 5 minutes.
 
 ---
 
@@ -26,77 +26,91 @@ Token is cached — re-login only happens when JWT `exp` is past.
 
 | Module type | URL format | Helper |
 |---|---|---|
-| Most endpoints | `{base}/{version}/{companyId}/circulydb/{resource}` | `circulydbRequest` |
-| CSS / Deliveries | `{base}/{version}/{companyId}/css/{resource}` | `cssRequest` |
-| Debt collection | `{base}/{version}/{companyId}/debtist/{resource}` | `debtistRequest` |
+| Most endpoints | `{BASE_URL}/{API_VERSION}/{companyId}/circulydb/{resource}` | `circulydbRequest` |
+| CSS / Deliveries | `{BASE_URL}/{API_VERSION}/css/{resource}` | `cssRequest` |
+| Debt collection | `{BASE_URL}/{API_VERSION}/{companyId}/debtist/{resource}` | `debtistRequest` |
 
-All helpers live in `cypress/support/customer-api/_shared/apiClient.js`.
+All helpers live in `tests/support/helpers/apiClient.js`.
 
 ---
 
-## DB connection (PostgreSQL)
+## Run commands
 
-Configured in `cypress.config.js` via `cy.task('queryDb', sqlString)`.
-`COMPANY_ID` is pre-seeded from `.env` so DB queries work before first login.
+```bash
+npm run all:smoke               # smoke test — 1 VU, 1 iteration
+npm run all:load                # combined load test — all 44 endpoints
+npm run all:stress              # stress test — 0 → 150 VUs over 17 min
+npm run sync-server             # live dashboard SSE server on http://localhost:3333
 
-| Env var | Value |
-|---|---|
-| DB_HOST | see `.env` |
-| DB_NAME | see `.env` |
-| DB_PORT | see `.env` |
-| DB_USER | see `.env` |
-| COMPANY_ID | see `.env` |
+# Per-module load tests
+npm run login:load
+npm run orders:load
+npm run subscriptions:load
+npm run customers:load
+npm run invoices:load
+npm run transactions:load
+npm run draft-orders:load
+npm run recurring-payments:load
+npm run products:load
+npm run retailers:load
+npm run vouchers:load
+```
 
 ---
 
 ## Project structure
 
 ```
-unified-customer-api/
-├── .env                         ← credentials (not committed)
-├── .env.example
-├── cypress.config.js
+loadTest-api/
+├── .env                              ← credentials (gitignored)
+├── .env.example                      ← variable names template
 ├── package.json
-└── cypress/
-    ├── e2e/customer-api/
-    │   ├── 01-orders/orders.cy.js
-    │   ├── 02-customers/customers.cy.js
-    │   ├── 03-invoices/invoices.cy.js
-    │   ├── 04-payments/payments.cy.js
-    │   ├── 05-subscriptions/subscriptions.cy.js
-    │   ├── 06-deliveries/deliveries.cy.js
-    │   ├── 07-draft-orders/draft-orders.cy.js
-    │   ├── 08-transactions/transactions.cy.js
-    │   ├── 09-recurring-payments/recurring-payments.cy.js
-    │   ├── 10-product-tracking/product-tracking.cy.js
-    │   ├── 11-product/product-variants.cy.js
-    │   ├── 12-retailers/retailers.cy.js
-    │   ├── 13-vouchers/vouchers.cy.js
-    │   ├── 14-css/css.cy.js
-    │   ├── 15-notes/notes.cy.js
-    │   ├── 16-debtist/debtist.cy.js
-    │   ├── 17-access-keys/access-keys.cy.js
-    │   └── 18-csv/csv.cy.js
-    └── support/customer-api/
-        ├── _shared/apiClient.js           ← JWT auth + 3 request helpers
-        ├── orders/{Commands,Queries,Payloads}.js
-        ├── customers/{Commands,Queries,Payloads}.js
-        ├── invoices/{Commands,Queries,Payloads}.js
-        ├── payments/{Commands,Queries,Payloads}.js
-        ├── subscriptions/{Commands,Queries,Payloads}.js
-        ├── deliveries/{Commands,Queries}.js
-        ├── draft-orders/{Commands,Queries,Payloads}.js
-        ├── transactions/{Commands,Queries}.js
-        ├── recurring-payments/{Commands,Queries}.js
-        ├── product-tracking/{Commands,Queries}.js
-        ├── product-variants/{Commands,Queries}.js
-        ├── retailers/{Commands,Queries}.js
-        ├── vouchers/voucherCommands.js
-        ├── css/{Commands,Queries}.js
-        ├── notes/{Commands,Queries}.js
-        ├── debtist/{Commands,Queries}.js
-        ├── access-keys/accessKeyCommands.js
-        └── csv/csvCommands.js
+└── tests/
+    ├── docs/
+    │   ├── sync-server.js            ← SSE server for live dashboard
+    │   ├── sync-test-cases.js        ← test case sync utility
+    │   ├── TEST_CASES.html           ← live dashboard UI
+    │   └── TEST_CASES_FEATURES.md
+    ├── fixtures/
+    │   └── testData.json
+    ├── smoke/
+    │   ├── all-modules.smoke.test.js ← 1 VU smoke test (44 endpoints)
+    │   └── smoke.test.js
+    ├── load/
+    │   ├── all-modules.load.test.js  ← combined 44-endpoint load test
+    │   ├── login.load.test.js
+    │   ├── orders.load.test.js
+    │   ├── subscriptions.load.test.js
+    │   ├── customers.load.test.js
+    │   ├── invoices.load.test.js
+    │   ├── transactions.load.test.js
+    │   ├── draft-orders.load.test.js
+    │   ├── recurring-payments.load.test.js
+    │   ├── products.load.test.js
+    │   ├── retailers.load.test.js
+    │   └── vouchers.load.test.js
+    ├── stress/
+    │   ├── all-modules.stress.test.js ← 0→150 VU stress test
+    │   └── stress.test.js
+    ├── soak/
+    │   └── soak.test.js
+    ├── spike/
+    │   └── spike.test.js
+    ├── support/
+    │   ├── helpers/
+    │   │   ├── auth.js               ← JWT login + per-VU token caching
+    │   │   ├── k6.js                 ← k6 built-ins + env var exports
+    │   │   ├── apiClient.js          ← circulydbRequest / cssRequest / debtistRequest
+    │   │   ├── thresholds.js         ← buildThresholds() helper
+    │   │   ├── report.js             ← buildHtmlReport() helper
+    │   │   └── apiHealthCheck.js     ← pre-run server wake-up check
+    │   ├── commands/                 ← k6 POST/PUT/DELETE helpers (one file per module)
+    │   ├── queries/                  ← k6 GET helpers (one file per module)
+    │   └── payloads/                 ← request payload factories (one file per module)
+    └── _reference/
+        ├── README.md                 ← not runnable — Cypress reference only
+        ├── customer-api/             ← 16 original Cypress spec files (.cy.js)
+        └── support/customer-api/     ← original Cypress support files
 ```
 
 ---
@@ -104,95 +118,52 @@ unified-customer-api/
 ## Key architectural decisions
 
 ### JWT token caching
-`ensureAuthenticated()` in `apiClient.js` decodes the JWT `exp` claim using `atob()` (no external lib).
-Token is stored in `Cypress.env('jwtToken')` + `Cypress.env('jwtTokenExpiry')` — survives across tests within a run.
+`getToken()` in `auth.js` keeps token + expiry in module-level variables per VU.
+Token is reused across iterations; re-login only fires when within 5 minutes of JWT `exp`.
+`atob()` decodes the JWT payload — no external library needed (built into k6).
 
-### companyId flow
-1. Pre-seeded from `.env` → `COMPANY_ID` → `cypress.config.js` → `Cypress.env('companyId')`
-2. Overwritten at runtime with value from login response
-3. DB queries use `getCompanyId()` which reads `Cypress.env('companyId')` — works before first login because of pre-seed
+### setup() — ID fetching
+`all-modules.load.test.js` uses a `setup()` function that runs once before VUs start.
+It calls `fetchFirst()` for each module — a live `GET ?page=1&per_page=1` API call — to
+resolve real IDs (orderId, subscriptionId, transactionId, etc.) that VUs use in tests.
+No hardcoded IDs, no DB queries — always uses current data from the API.
 
-### Deliveries (CSS module)
-CSS endpoints follow pattern: `{base}/{version}/css/{resource}` — no `companyId`, no `circulydb`.
-`deliveriesCommands.js` uses `cssRequest` with `/css/deliveries` as endpoint.
+### Three URL patterns
+- `circulydbRequest` — most modules: includes `companyId` + `/circulydb/` segment
+- `cssRequest` — CSS/Deliveries: no `companyId`, uses `/css/` segment
+- `debtistRequest` — Debt collection: includes `companyId`, no `/circulydb/` segment
 
-### Access keys endpoints
-Use `circulydbRequest` — map to `/keys`, `/assign`, `/keys/{id}`.
-Old Postman had `{{customers_lumen_url}}/{{company_id}}/keys` → now `/circulydb/keys`.
+### Threshold structure
+Three levels enforced via `buildThresholds()`:
+- **Global** — `http_req_duration` across the entire run
+- **Module** — `http_req_duration{module:orders}` across all endpoints in a module
+- **Endpoint** — `http_req_duration{ep:orders.get_list}` per individual request
 
-### CSV/export endpoints
-Use `circulydbRequest` — map to `/CSV` (POST with `type` body), `/export`, `/exports/{id}`.
-
----
-
-## Run commands
-
-```bash
-npm run api:orders          # 01-orders only
-npm run api:customers       # 02-customers only
-# ... (api:invoices, api:payments, api:subscriptions, etc.)
-npx cypress run             # all specs
-npx cypress open            # interactive
-```
+### HTML reports
+Each test writes a self-contained HTML report via `buildHtmlReport()` in `report.js`.
+Reports are written to `tests/{type}/reports/` and gitignored.
 
 ---
 
-## Source reference
-- Old project (Basic Auth, 16 modules): `C:\Users\shahi\Circuly Project\customer-api-e2e`
-- Postman collection: `C:\Users\shahi\Downloads\circuly_customers API (2026-04) (hub).postman_collection.json`
+## Modules & endpoints (44 total)
 
----
-
-## SQA Skill — Active Rules
-
-> Skill file: `.claude/skills/SQA_E2E_Automation_Pro.json` (v2.0)
-> These rules apply to ALL responses in this project.
-
-### Code Style
-| Rule | Standard |
+| Module | Endpoints |
 |---|---|
-| Complexity | Intermediate |
-| Hooks | Always include `beforeEach` / `afterEach` |
-| Assertions | Meaningful assertions after every action |
-| Selectors | Prefer `data-testid` → `aria-label` → avoid CSS class |
-| Error handling | Wrap critical steps in `try/catch` where applicable |
-| Comments | `// selector: …` and `// action: …` on every UI element |
+| Orders | list · by_id · payment_update_link · payment_methods · filter · search |
+| Subscriptions | list · by_id · filter · search |
+| Customers | list · by_id · balance · filter · search |
+| Invoices | list · by_number · filter · search |
+| Transactions | list · by_id · filter · search |
+| Draft Orders | list · by_id · filter · search |
+| Recurring Payments | list · by_id · filter · search |
+| Products | list · variants · all_variants · filter · search |
+| Retailers | list · by_location_id · filter · search |
+| Vouchers | list · by_code · filter · search |
 
-### Token Efficiency
-- Summaries and tables **first**, detailed sections second
-- Group repetitive steps into loops / functions / tables
-- Short, precise inline comments — no long explanations in code
-- Always structured and immediately actionable
+---
 
-### Test Cases Format
-Columns: `TC-ID | Test Type | Action | Input | Expected Output | Priority (P1/P2/P3) | Tag (Smoke/Sanity/Regression) | Notes`
-Always include: normal, edge, boundary, negative scenarios. Flag high-risk and automation candidates.
+## Contributors
 
-### Available Skill Prompts
-| ID | Purpose |
+| GitHub | Email |
 |---|---|
-| `test_cases` | Generate tabular E2E test cases |
-| `automation_cypress` | Cypress JS automation code |
-| `automation_playwright` | Playwright + POM TypeScript |
-| `automation_api` | REST API test code (cy.request / APIRequestContext) |
-| `log_analysis` | Analyze Cypress/Playwright logs |
-| `bug_report` | Linear-ready structured bug report |
-| `test_data` | JSON payloads + SQL seed data |
-| `regression_priority` | Smoke / Sanity / Full Regression categorization |
-| `cicd_github_actions` | GitHub Actions YAML with Mochawesome + Slack |
-| `sql_validation` | Pre/post condition SQL queries |
-| `mochawesome_config` | Reporter setup + merge config |
-| `sprint_summary` | Sprint-end QA summary report |
-| `coverage_gap` | Test coverage gap analysis |
-| `bdd_gherkin` | Gherkin `.feature` file from test cases |
-| `performance_k6` | k6 load test scaffold |
-
-### n8n Automation Suggestions
-Always flag relevant n8n flows at the end of responses:
-- **Test Failure → Linear Bug** — auto-create ticket on test failure
-- **Daily Regression Summary** — cron → GitHub Actions results → Slack
-- **Linear Story → Draft Test Cases** — 'Ready for QA' label → Claude → Linear comment
-- **PR Opened → Smoke Tests** — GitHub PR → trigger workflow → PR comment
-- **Mochawesome → Slack** — parse JSON → post summary to QA channel
-- **Sprint End → Test Summary** — Linear issues + stats → Claude → Confluence
-- **Flaky Test Detector** — retry pattern detection → Linear 'flaky-test' ticket
+| [@zamanqa](https://github.com/zamanqa) | zaman@circuly.io |
