@@ -47,7 +47,7 @@ export const options = {
 export function setup() {
   const { token, companyId } = setupAuth();
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
-  const base = `${k6.BASE_URL}/${k6.API_VERSION}/${companyId}/circulydb`;
+  const base = `${k6.BASE_URL}/${k6.API_VERSION}/${companyId}`;
 
   // Fetch first product for id and title
   const productsRes = k6.http.get(
@@ -82,7 +82,7 @@ export function setup() {
 
 export default function ({ productId, productTitle }) {
   const { token, companyId } = getToken();
-  const base = `${k6.BASE_URL}/${k6.API_VERSION}/${companyId}/circulydb`;
+  const base = `${k6.BASE_URL}/${k6.API_VERSION}/${companyId}`;
 
   const params = (endpointTag) => ({
     headers: {

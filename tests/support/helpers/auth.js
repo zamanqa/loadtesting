@@ -6,8 +6,9 @@
  * it's close to expiring (within 5 minutes of the JWT exp claim).
  */
 
-import http from 'k6/http';
+import http     from 'k6/http';
 import { check } from 'k6';
+import encoding  from 'k6/encoding';
 
 const BASE_URL        = __ENV.BASE_URL;
 const API_VERSION     = __ENV.API_VERSION || '2026-04';
@@ -48,12 +49,12 @@ function login() {
   const res = http.post(
     `${BASE_URL}/${API_VERSION}/auth/login`,
     JSON.stringify({ consumer_key: CONSUMER_KEY, consumer_secret: CONSUMER_SECRET }),
-    { headers: { 'Content-Type': 'application/json' } }
+    { headers: { 'Content-Type': 'application/json', Accept: 'application/json' } }
   );
 
   check(res, {
-    'login: status 200':   (r) => r.status === 200,
-    'login: has token':    (r) => {
+    'login: status 200': (r) => r.status === 200,
+    'login: has token':  (r) => {
       try { return !!JSON.parse(r.body).token; } catch { return false; }
     },
   });
@@ -67,13 +68,22 @@ function login() {
   token     = body.token;
   companyId = body.company_id || COMPANY_ID;
 
-  // Decode the JWT exp claim to know exactly when the token expires.
-  // atob is built into k6 so no extra library needed.
-  try {
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    expiry = payload.exp * 1000;
-  } catch {
-    expiry = Date.now() + 60 * 60 * 1000; // default to 1 hour if decode fails
+
+  // Prefer expires_in from the response body (seconds from now).
+  // Fall back to decoding the JWT exp claim via k6/encoding.
+  // Final fallback: default to 1 hour.
+  if (body.expires_in) {
+    expiry = Date.now() + body.expires_in * 1000;
+  } else {
+    try {
+      // JWT payload is base64url-encoded — use k6/encoding, not atob (not available in all k6 versions)
+      const raw     = encoding.b64decode(token.split('.')[1], 'rawurl', 's');
+      const payload = JSON.parse(raw);
+      expiry = payload.exp * 1000;
+    } catch {
+      console.warn('[auth] Could not determine token expiry — defaulting to 1h');
+      expiry = Date.now() + 60 * 60 * 1000;
+    }
   }
 
   return { token, companyId };

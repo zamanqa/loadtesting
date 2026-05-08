@@ -59,7 +59,7 @@ export function setup() {
   const { token, companyId } = setupAuth();
 
   const res = k6.http.get(
-    `${k6.BASE_URL}/${k6.API_VERSION}/${companyId}/circulydb/subscriptions?page=1&per_page=1&sort=created_at&desc=true`,
+    `${k6.BASE_URL}/${k6.API_VERSION}/${companyId}/subscriptions?page=1&per_page=1&sort=created_at&desc=true`,
     { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } }
   );
 
@@ -83,7 +83,7 @@ export function setup() {
 // getToken() handles token caching and auto-refresh per VU.
 export default function ({ subscriptionId }) {
   const { token, companyId } = getToken();
-  const base = `${k6.BASE_URL}/${k6.API_VERSION}/${companyId}/circulydb`;
+  const base = `${k6.BASE_URL}/${k6.API_VERSION}/${companyId}`;
 
   // Both tags are required: 'module' enables the group-level threshold,
   // 'ep' enables the per-endpoint threshold.

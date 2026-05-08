@@ -49,7 +49,7 @@ export function setup() {
   const { token, companyId } = setupAuth();
 
   const res = k6.http.get(
-    `${k6.BASE_URL}/${k6.API_VERSION}/${companyId}/circulydb/paginated-invoices?page=1&per_page=1&sort=created_at&desc=true`,
+    `${k6.BASE_URL}/${k6.API_VERSION}/${companyId}/paginated-invoices?page=1&per_page=1&sort=created_at&desc=true`,
     { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } }
   );
 
@@ -79,7 +79,7 @@ export function setup() {
 
 export default function ({ invoiceNumber }) {
   const { token, companyId } = getToken();
-  const base = `${k6.BASE_URL}/${k6.API_VERSION}/${companyId}/circulydb`;
+  const base = `${k6.BASE_URL}/${k6.API_VERSION}/${companyId}`;
 
   const params = (endpointTag) => ({
     headers: {

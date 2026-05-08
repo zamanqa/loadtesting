@@ -24,3 +24,11 @@ export const BASE_URL        = __ENV.BASE_URL;
 export const API_VERSION     = __ENV.API_VERSION || '2026-04';
 export const CONSUMER_KEY    = __ENV.CONSUMER_KEY;
 export const CONSUMER_SECRET = __ENV.CONSUMER_SECRET;
+
+// Per-test request timeouts — override via .env to tune for your environment.
+export const REQUEST_TIMEOUT = __ENV.REQUEST_TIMEOUT || '10s'; // load, soak
+export const STRESS_TIMEOUT  = __ENV.STRESS_TIMEOUT  || '20s'; // stress — server may slow under 150 VUs
+
+// Trend stats written into the k6 summary data object used by handleSummary.
+// Import and spread into options.summaryTrendStats so p50/p99 appear in reports.
+export const SUMMARY_TREND_STATS = ['avg', 'min', 'max', 'p(50)', 'p(90)', 'p(95)', 'p(99)'];

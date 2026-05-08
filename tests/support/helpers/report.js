@@ -73,6 +73,11 @@ export function buildHtmlReport(data, { title, subtitle, module: moduleName, end
     }
   });
 
+  // Derive the p95 gate from the config so the module summary colour reflects actual thresholds.
+  const maxEndpointP95 = endpoints.length > 0
+    ? Math.max(...endpoints.map((e) => e.p95limit))
+    : 500;
+
   // Module group summary — only rendered when `module` is provided in the config
   let moduleSummaryHtml = '';
   if (moduleName) {
@@ -81,6 +86,7 @@ export function buildHtmlReport(data, { title, subtitle, module: moduleName, end
     const modReqs = getMetric(data, `http_reqs{module:${moduleName}}`);
     const modP90  = modDur ? modDur['p(90)'] : null;
     const modP95  = modDur ? modDur['p(95)'] : null;
+    const modP99  = modDur ? modDur['p(99)'] : null;
     const modErr  = modFail ? modFail.rate : null;
     const modRps  = modReqs ? modReqs.rate : null;
 
@@ -95,7 +101,12 @@ export function buildHtmlReport(data, { title, subtitle, module: moduleName, end
       <span class="mod-sep">·</span>
       <span class="mod-stat">
         <span class="mod-label">p95</span>
-        <span class="mod-value ${modP95 != null && modP95 < 500 ? 'good' : 'bad'}">${ms(modP95)}</span>
+        <span class="mod-value ${modP95 != null && modP95 < maxEndpointP95 ? 'good' : 'bad'}">${ms(modP95)}</span>
+      </span>
+      <span class="mod-sep">·</span>
+      <span class="mod-stat">
+        <span class="mod-label">p99</span>
+        <span class="mod-value">${ms(modP99)}</span>
       </span>
       <span class="mod-sep">·</span>
       <span class="mod-stat">
@@ -118,8 +129,10 @@ export function buildHtmlReport(data, { title, subtitle, module: moduleName, end
     const reqs     = getMetric(data, `http_reqs{ep:${tag}}`);
     const chks     = getMetric(data, `checks{ep:${tag}}`);
     const ok       = passed(data, `http_req_duration{ep:${tag}}`);
+    const p50Val      = dur ? dur['p(50)'] : null;
     const p90Val      = dur ? dur['p(90)'] : null;
     const p95Val      = dur ? dur['p(95)'] : null;
+    const p99Val      = dur ? dur['p(99)'] : null;
     const checkRate   = chks ? chks.rate : null;
     const endpointRps = reqs ? reqs.rate : null;
     const skipped     = !dur;
@@ -154,8 +167,10 @@ export function buildHtmlReport(data, { title, subtitle, module: moduleName, end
           <tr><td>Check pass rate</td><td class="${checkClass}">${pct(checkRate)}</td></tr>
           <tr><td>avg</td><td>${ms(dur ? dur.avg : null)}</td></tr>
           <tr><td>min</td><td>${ms(dur ? dur.min : null)}</td></tr>
+          <tr><td>p50</td><td>${ms(p50Val)}</td></tr>
           <tr><td class="${p90Class}">p90</td><td class="${p90Class}">${ms(p90Val)}</td></tr>
           <tr><td class="${p95Class}">p95</td><td class="${p95Class}">${ms(p95Val)}</td></tr>
+          <tr><td>p99</td><td>${ms(p99Val)}</td></tr>
           <tr><td>max</td><td>${ms(dur ? dur.max : null)}</td></tr>
         </table>`}
     </div>`;
@@ -237,7 +252,7 @@ export function buildHtmlReport(data, { title, subtitle, module: moduleName, end
     </div>
     <div class="stat">
       <div class="label">p95 (global)</div>
-      <div class="value ${globalDur && globalDur['p(95)'] > 500 ? 'bad' : 'good'}">${ms(globalDur ? globalDur['p(95)'] : null)}</div>
+      <div class="value ${globalDur && globalDur['p(95)'] > maxEndpointP95 ? 'bad' : 'good'}">${ms(globalDur ? globalDur['p(95)'] : null)}</div>
     </div>
     <div class="stat">
       <div class="label">avg (global)</div>

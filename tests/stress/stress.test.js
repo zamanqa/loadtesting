@@ -61,7 +61,7 @@ export default function (data) {
     timeout: '10s',
   });
 
-  const base = `${BASE_URL}/${API_VERSION}/${companyId}/circulydb`;
+  const base = `${BASE_URL}/${API_VERSION}/${companyId}`;
   const qs   = '?page=1&per_page=100&sort=created_at&desc=true';
 
   // action: GET /orders under stress load

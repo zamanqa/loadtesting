@@ -63,25 +63,26 @@ export const options = {
 export function setup() {
   const { token, companyId } = setupAuth();
 
-  const res = k6.http.get(
-    `${k6.BASE_URL}/${k6.API_VERSION}/${companyId}/circulydb/orders?page=1&per_page=1`,
-    { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } }
-  );
+  if (!token)     throw new Error('[setup] Login failed — check CONSUMER_KEY / CONSUMER_SECRET in .env');
+  if (!companyId) throw new Error('[setup] companyId is null — check COMPANY_ID in .env (or verify the login response includes company_id)');
 
-  let orderId = null;
+  const res = k6.http.get(
+    `${k6.BASE_URL}/${k6.API_VERSION}/${companyId}/orders?page=1&per_page=1`,
+    { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Accept: 'application/json' } }
+  );
 
   if (res.status !== 200) {
     throw new Error(`Could not fetch orders in setup (HTTP ${res.status}): ${res.body}`);
   }
 
-  const body = JSON.parse(res.body);
-  orderId = body.data && body.data.length > 0 ? body.data[0].id : null;
+  const body    = JSON.parse(res.body);
+  const orderId = body.data && body.data.length > 0 ? body.data[0].id : null;
 
   if (!orderId) {
     throw new Error('No orders found in the database — cannot run test without a valid orderId');
   }
 
-  console.log(`[setup] Using orderId: ${orderId}`);
+  console.log(`[setup] orderId: ${orderId}`);
 
   return { orderId };
 }
@@ -90,7 +91,7 @@ export function setup() {
 // getToken() handles token caching and auto-refresh per VU.
 export default function ({ orderId }) {
   const { token, companyId } = getToken();
-  const base = `${k6.BASE_URL}/${k6.API_VERSION}/${companyId}/circulydb`;
+  const base = `${k6.BASE_URL}/${k6.API_VERSION}/${companyId}`;
 
   // Both tags are required: 'module' enables the group-level threshold,
   // 'ep' enables the per-endpoint threshold.
