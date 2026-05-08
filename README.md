@@ -72,9 +72,9 @@ npm run vouchers:load
 
 ### Live dashboard
 ```bash
-npm run dashboard      # starts SSE server on http://localhost:3333
+npm run sync-server    # starts SSE server on http://localhost:3333
 ```
-Open `cypress/docs/TEST_CASES.html` in your browser, then run any test — results stream in real time.
+Open `tests/docs/TEST_CASES.html` in your browser, then run any test — results stream in real time.
 
 ---
 
@@ -82,9 +82,9 @@ Open `cypress/docs/TEST_CASES.html` in your browser, then run any test — resul
 
 | Type | File | VUs | Duration | Purpose |
 |---|---|---|---|---|
-| **Smoke** | `cypress/e2e/smoke/all-modules.smoke.test.js` | 1 | ~2 min | Connectivity & correctness gate |
-| **Load** | `cypress/e2e/load/all-modules.load.test.js` | 5–60 | ~1.5–30 min | Normal traffic baseline |
-| **Stress** | `cypress/e2e/stress/all-modules.stress.test.js` | 0 → 150 | 17 min | Breaking point finder |
+| **Smoke** | `tests/smoke/all-modules.smoke.test.js` | 1 | ~2 min | Connectivity & correctness gate |
+| **Load** | `tests/load/all-modules.load.test.js` | 5–60 | ~1.5–30 min | Normal traffic baseline |
+| **Stress** | `tests/stress/all-modules.stress.test.js` | 0 → 150 | 17 min | Breaking point finder |
 
 ### Stress VU ramp profile
 ```
@@ -118,7 +118,7 @@ Open `cypress/docs/TEST_CASES.html` in your browser, then run any test — resul
 
 ## Threshold levels
 
-Each test enforces three levels of thresholds via `cypress/support/helpers/thresholds.js`:
+Each test enforces three levels of thresholds via `tests/support/helpers/thresholds.js`:
 
 | Level | Key example | What it gates |
 |---|---|---|
@@ -142,10 +142,10 @@ HTML reports are written after every run:
 
 | Test | Report path |
 |---|---|
-| Smoke | `cypress/e2e/smoke/reports/all-modules-smoke-report.html` |
-| Load (all) | `cypress/e2e/load/reports/all-modules-load-report.html` |
-| Load (module) | `cypress/e2e/load/reports/<module>-load-report.html` |
-| Stress | `cypress/e2e/stress/reports/all-modules-stress-report.html` |
+| Smoke | `tests/smoke/reports/all-modules-smoke-report.html` |
+| Load (all) | `tests/load/reports/all-modules-load-report.html` |
+| Load (module) | `tests/load/reports/<module>-load-report.html` |
+| Stress | `tests/stress/reports/all-modules-stress-report.html` |
 
 Open the HTML file in any browser — no server required.
 
@@ -158,35 +158,47 @@ loadTest-api/
 ├── .env                              ← credentials (not committed)
 ├── .env.example                      ← template
 ├── package.json
-├── cypress/
-│   ├── docs/
-│   │   ├── sync-server.js            ← SSE server for live dashboard
-│   │   └── TEST_CASES.html           ← live dashboard UI
-│   ├── e2e/
-│   │   ├── smoke/
-│   │   │   └── all-modules.smoke.test.js   ← 1 VU smoke test
-│   │   ├── load/
-│   │   │   ├── all-modules.load.test.js    ← combined 44-endpoint load
-│   │   │   ├── orders.load.test.js
-│   │   │   ├── subscriptions.load.test.js
-│   │   │   ├── customers.load.test.js
-│   │   │   ├── invoices.load.test.js
-│   │   │   ├── transactions.load.test.js
-│   │   │   ├── draft-orders.load.test.js
-│   │   │   ├── recurring-payments.load.test.js
-│   │   │   ├── products.load.test.js
-│   │   │   ├── retailers.load.test.js
-│   │   │   ├── vouchers.load.test.js
-│   │   │   └── login.load.test.js
-│   │   └── stress/
-│   │       └── all-modules.stress.test.js  ← 0→150 VU stress test
-│   └── support/
-│       └── helpers/
-│           ├── auth.js               ← JWT login + token caching
-│           ├── k6.js                 ← k6 imports + BASE_URL + sleep
-│           ├── thresholds.js         ← buildThresholds() helper
-│           ├── report.js             ← buildHtmlReport() helper
-│           └── apiHealthCheck.js     ← pre-run health check
+└── tests/
+    ├── docs/
+    │   ├── sync-server.js            ← SSE server for live dashboard
+    │   └── TEST_CASES.html           ← live dashboard UI
+    ├── fixtures/
+    │   └── testData.json
+    ├── smoke/
+    │   └── all-modules.smoke.test.js       ← 1 VU smoke test
+    ├── load/
+    │   ├── all-modules.load.test.js        ← combined 44-endpoint load
+    │   ├── orders.load.test.js
+    │   ├── subscriptions.load.test.js
+    │   ├── customers.load.test.js
+    │   ├── invoices.load.test.js
+    │   ├── transactions.load.test.js
+    │   ├── draft-orders.load.test.js
+    │   ├── recurring-payments.load.test.js
+    │   ├── products.load.test.js
+    │   ├── retailers.load.test.js
+    │   ├── vouchers.load.test.js
+    │   └── login.load.test.js
+    ├── stress/
+    │   └── all-modules.stress.test.js      ← 0→150 VU stress test
+    ├── soak/
+    │   └── soak.test.js
+    ├── spike/
+    │   └── spike.test.js
+    ├── support/
+    │   ├── helpers/
+    │   │   ├── auth.js               ← JWT login + token caching
+    │   │   ├── k6.js                 ← k6 imports + BASE_URL + sleep
+    │   │   ├── thresholds.js         ← buildThresholds() helper
+    │   │   ├── report.js             ← buildHtmlReport() helper
+    │   │   ├── apiClient.js          ← circulydbRequest / cssRequest / debtistRequest
+    │   │   └── apiHealthCheck.js     ← pre-run health check
+    │   ├── commands/                 ← k6 POST/PUT/DELETE helpers per module
+    │   ├── queries/                  ← k6 GET helpers per module
+    │   └── payloads/                 ← request payload factories per module
+    └── _reference/
+        ├── README.md                 ← not runnable — Cypress reference only
+        └── customer-api/             ← 16 original Cypress spec files (.cy.js)
 ```
 
 ---
@@ -202,7 +214,7 @@ loadTest-api/
 
 ## Adding a new test
 
-1. Copy `cypress/e2e/load/orders.load.test.js` as a template
+1. Copy `tests/load/orders.load.test.js` as a template
 2. Define `ENDPOINTS` with `{ tag, p95, p90 }` for each endpoint
 3. Import `buildThresholds` — thresholds generate automatically
 4. Add a `pre<name>:load` + `<name>:load` pair to `package.json`
