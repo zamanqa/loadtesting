@@ -115,7 +115,7 @@ export function buildHtmlReport(data, { title, subtitle, module: moduleName, end
   const cards = endpoints.map(({ tag, label, p95limit }) => {
     const dur      = getMetric(data, `http_req_duration{ep:${tag}}`);
     const fail     = getMetric(data, `http_req_failed{ep:${tag}}`);
-    const reqs     = getMetric(data, `http_reqs{endpoint:${tag}}`);
+    const reqs     = getMetric(data, `http_reqs{ep:${tag}}`);
     const chks     = getMetric(data, `checks{ep:${tag}}`);
     const ok       = passed(data, `http_req_duration{ep:${tag}}`);
     const p90Val      = dur ? dur['p(90)'] : null;
