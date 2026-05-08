@@ -11,6 +11,11 @@ cypress/screenshots/
 cypress/reports/
 cypress/docs/run-history/
 
+# k6 HTML reports (generated output — not committed)
+cypress/e2e/load/reports/
+cypress/e2e/smoke/reports/
+cypress/e2e/stress/reports/
+
 # Logs
 *.log
 npm-debug.log*
