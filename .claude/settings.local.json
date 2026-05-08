@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git mv *)",
+      "Bash(xargs sed -i \"s|'../../support/helpers/|'../support/helpers/|g; s|cypress/e2e/load/reports/|tests/load/reports/|g; s|cypress/e2e/smoke/reports/|tests/smoke/reports/|g; s|cypress/e2e/stress/reports/|tests/stress/reports/|g\")",
+      "Bash(git add *)"
+    ]
+  }
+}
