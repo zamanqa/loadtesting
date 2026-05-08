@@ -1,8 +1,9 @@
-# unified-customer-api — Project Memory
+# loadTest-api — Project Memory
 
 ## What this project is
-Cypress E2E test suite for the Circuly Customers API (version `2026-04`).
-Replaces and extends `customer-api-e2e` with JWT Bearer token auth and 18 modules.
+k6 performance test suite for the Circuly Unified Customers API (version `2026-04`).
+Covers smoke, load, and stress scenarios across 10 modules and 44 endpoints.
+Cypress specs are retained in `tests/_reference/` for reference only and are not executed.
 
 ---
 
