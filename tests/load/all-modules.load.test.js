@@ -141,9 +141,9 @@ export const options = {
       executor: 'ramping-vus',
       startVUs: 0,
       stages: [
-        { duration: '30s', target: 5 }, // ramp up
-        { duration: '30s', target: 5 }, // hold
-        { duration: '30s', target: 5 }, // ramp down
+        { duration: '10m', target: 30 }, // ramp up
+        { duration: '10m', target: 30 }, // hold
+        { duration: '10m', target: 0 }, // ramp down
       ],
       tags: { scenario: 'load' },
     },

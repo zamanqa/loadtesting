@@ -1,7 +1,7 @@
-# Circuly API — Load & Stress Test Suite
+# Circuly API — Performance Test Suite
 
 k6 performance tests for the **Circuly Unified Customer API (v2026-04)**.  
-Covers smoke, load, and stress scenarios across all 10 modules and 44 endpoints.
+Covers smoke, load, stress, soak, and spike scenarios across all 10 modules and 44 endpoints.
 
 ---
 
@@ -75,6 +75,16 @@ stages: [
 npm run all:stress
 ```
 
+### Soak test — memory leak / drift detector (70 VUs · 35 min)
+```bash
+npm run all:soak
+```
+
+### Spike test — instant burst survival (500 VUs · ~50 s)
+```bash
+npm run all:spike
+```
+
 ### Per-module load tests
 **`npm run all:load`**
 ```bash
@@ -106,6 +116,8 @@ Open `tests/docs/TEST_CASES.html` in your browser, then run any test — results
 | **Smoke** | `tests/smoke/all-modules.smoke.test.js` | 1 | ~2 min | Connectivity & correctness gate |
 | **Load** | `tests/load/all-modules.load.test.js` | 5–60 | ~1.5–30 min | Normal traffic baseline |
 | **Stress** | `tests/stress/all-modules.stress.test.js` | 0 → 150 | 17 min | Breaking point finder |
+| **Soak** | `tests/soak/soak.test.js` | 70 (steady) | 35 min | Memory leak & drift detector |
+| **Spike** | `tests/spike/spike.test.js` | 0 → 500 | ~50 s | Instant burst survival |
 
 ### Stress VU ramp profile
 ```
@@ -117,6 +129,23 @@ Open `tests/docs/TEST_CASES.html` in your browser, then run any test — results
    150 VUs   (3 min)  — hold peak
      0 VUs   (2 min)  — cool-down
 ```
+
+### Soak VU profile
+```
+ 0 → 70 VUs  (2 min)  — ramp up
+    70 VUs   (30 min) — sustained soak — watch p95 for drift
+     0 VUs   (3 min)  — ramp down
+```
+Key signal: compare p95 at t=5 min vs t=30 min — drift > 20% suggests memory leak or connection pool exhaustion.
+
+### Spike VU profile
+```
+  0 → 500 VUs (10 s)  — instant burst
+    500 VUs   (30 s)  — hold — observe 429s, 5xxs, and timeouts
+      0 VUs   (10 s)  — rapid drop
+```
+Checks use `not 5xx` / `not 429` (not `status 200`) — spike measures survival, not correctness.  
+Thresholds are 3× load baselines (10% error rate, 90% check pass rate).
 
 ---
 
@@ -154,6 +183,8 @@ Each test enforces three levels of thresholds via `tests/support/helpers/thresho
 | Smoke | 2500 ms (uniform) | < 0.5% | > 99% |
 | Load | per-endpoint (measured baselines) | < 5% | > 95% |
 | Stress | 2× load baselines | < 10% | > 90% |
+| Soak | same as load baselines | < 2% | > 98% |
+| Spike | 3× load baselines | < 10% | > 90% |
 
 ---
 
@@ -167,6 +198,8 @@ HTML reports are written after every run:
 | Load (all) | `tests/load/reports/all-modules-load-report.html` |
 | Load (module) | `tests/load/reports/<module>-load-report.html` |
 | Stress | `tests/stress/reports/all-modules-stress-report.html` |
+| Soak | `tests/soak/reports/all-modules-soak-report.html` |
+| Spike | `tests/spike/reports/all-modules-spike-report.html` |
 
 Open the HTML file in any browser — no server required.
 
@@ -209,10 +242,11 @@ loadTest-api/
     ├── support/
     │   ├── helpers/
     │   │   ├── auth.js               ← JWT login + token caching
-    │   │   ├── k6.js                 ← k6 imports + BASE_URL + sleep
+    │   │   ├── k6.js                 ← k6 imports + env vars + shared constants
+    │   │   ├── setup.js              ← fetchAllIds() — shared ID-fetching for setup()
     │   │   ├── thresholds.js         ← buildThresholds() helper
     │   │   ├── report.js             ← buildHtmlReport() helper
-    │   │   ├── apiClient.js          ← circulydbRequest / cssRequest / debtistRequest
+    │   │   ├── apiClient.js          ← circulydbRequest / cssRequest / makeParams
     │   │   └── apiHealthCheck.js     ← pre-run health check
     │   ├── commands/                 ← k6 POST/PUT/DELETE helpers per module
     │   ├── queries/                  ← k6 GET helpers per module

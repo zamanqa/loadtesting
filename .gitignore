@@ -12,9 +12,14 @@ cypress/reports/
 cypress/docs/run-history/
 
 # k6 HTML reports (generated output — not committed)
-cypress/e2e/load/reports/
-cypress/e2e/smoke/reports/
-cypress/e2e/stress/reports/
+tests/smoke/reports/
+tests/load/reports/
+tests/stress/reports/
+tests/soak/reports/
+tests/spike/reports/
+
+# k6 run history docs (generated output — not committed)
+tests/docs/run-history/
 
 # Logs
 *.log

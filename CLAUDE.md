@@ -2,7 +2,7 @@
 
 ## What this project is
 k6 performance test suite for the Circuly Unified Customers API (version `2026-04`).
-Covers smoke, load, and stress scenarios across 10 modules and 44 endpoints.
+Covers smoke, load, stress, soak, and spike scenarios across 10 modules and 44 endpoints.
 Cypress specs are retained in `tests/_reference/` for reference only and are not executed.
 
 ---
@@ -99,8 +99,9 @@ loadTest-api/
     ├── support/
     │   ├── helpers/
     │   │   ├── auth.js               ← JWT login + per-VU token caching
-    │   │   ├── k6.js                 ← k6 built-ins + env var exports
-    │   │   ├── apiClient.js          ← circulydbRequest / cssRequest / debtistRequest
+    │   │   ├── k6.js                 ← k6 built-ins + env vars + REQUEST_TIMEOUT, SUMMARY_TREND_STATS
+    │   │   ├── setup.js              ← fetchAllIds() — shared ID-fetching for all all-modules tests
+    │   │   ├── apiClient.js          ← circulydbRequest / cssRequest / makeParams factory
     │   │   ├── thresholds.js         ← buildThresholds() helper
     │   │   ├── report.js             ← buildHtmlReport() helper
     │   │   └── apiHealthCheck.js     ← pre-run server wake-up check
